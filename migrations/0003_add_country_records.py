@@ -275,7 +275,7 @@ def load_countries(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('tracker', '0001_initial'),
+        ('tracker', '0002_upgrade_to_20'),
     ]
 
     operations = [
