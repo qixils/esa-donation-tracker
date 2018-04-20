@@ -4,14 +4,15 @@ from django.db import models
 from django.db.models import signals
 from django.db.models import Count,Sum,Max,Avg
 from django.core.exceptions import ValidationError
-from django.core.urlresolvers import reverse
 from django.dispatch import receiver
 from django.contrib.auth.models import User
+from django.urls import reverse
 from django.utils import timezone
 
 from .event import LatestEvent
 from .fields import OneToOneOrNoneField
 from ..validators import *
+from functools import reduce
 
 try:
   import cld
@@ -76,10 +77,10 @@ class Donation(models.Model):
     ordering = [ '-timereceived' ]
 
   def bid_total(self):
-    return reduce(lambda a, b: a + b, map(lambda b: b.amount, self.bids.all()), Decimal('0.00'))
+    return reduce(lambda a, b: a + b, [b.amount for b in self.bids.all()], Decimal('0.00'))
 
   def prize_ticket_amount(self, targetPrize):
-    return sum(map(lambda ticket: ticket.amount, self.tickets.filter(prize=targetPrize)))
+    return sum([ticket.amount for ticket in self.tickets.filter(prize=targetPrize)])
 
   def clean(self,bid=None):
     super(Donation,self).clean()
@@ -102,27 +103,27 @@ class Donation(models.Model):
         #N.B. the order here is very important, as we want the new copy of bid to override the old one (if present)
         bids = list({bid} | bids)
 
-    bids = map(lambda b: b.amount or 0,bids)
+    bids = [b.amount or 0 for b in bids]
     bidtotal = reduce(lambda a,b: a+b,bids,Decimal('0'))
     if self.amount and bidtotal > self.amount:
       raise ValidationError('Bid total is greater than donation amount: %s > %s' % (bidtotal,self.amount))
 
     tickets = self.tickets.all()
-    ticketTotal = reduce(lambda a,b: a+b, map(lambda b: b.amount, tickets), Decimal('0'))
+    ticketTotal = reduce(lambda a,b: a+b, [b.amount for b in tickets], Decimal('0'))
     if self.amount and ticketTotal > self.amount:
       raise ValidationError('Prize ticket total is greater than donation amount: %s > %s' % (ticketTotal,self.amount))
 
     if self.comment and cld:
       if self.commentlanguage == 'un' or self.commentlanguage == None:
         detectedLangName, detectedLangCode, isReliable, textBytesFound, details = cld.detect(self.comment.encode('utf-8'), hintLanguageCode ='en')
-        if detectedLangCode in map(lambda x: x[0], LanguageChoices):
+        if detectedLangCode in [x[0] for x in LanguageChoices]:
           self.commentlanguage = detectedLangCode
         else:
           self.commentlanguage = 'un'
     else:
       self.commentlanguage = 'un'
-  def __unicode__(self):
-    return unicode(self.donor.visible_name() if self.donor else self.donor) + ' (' + unicode(self.amount) + ') (' + unicode(self.timereceived) + ')'
+  def __str__(self):
+    return str(self.donor.visible_name() if self.donor else self.donor) + ' (' + str(self.amount) + ') (' + str(self.timereceived) + ')'
 
 @receiver(signals.post_save, sender=Donation)
 def DonationBidsUpdate(sender, instance, created, raw, **kwargs):
@@ -142,14 +143,15 @@ class Donor(models.Model):
   firstname = models.CharField(max_length=64,blank=True,verbose_name='First Name')
   lastname = models.CharField(max_length=64,blank=True,verbose_name='Last Name')
   visibility = models.CharField(max_length=32, null=False, blank=False, default='FIRST', choices=DonorVisibilityChoices)
-  user = OneToOneOrNoneField(User, null=True, blank=True)
+  user = OneToOneOrNoneField(User, null=True, blank=True, on_delete=models.PROTECT)
 
   # Address information, yay!
   addresscity = models.CharField(max_length=128,blank=True,null=False,verbose_name='City')
   addressstreet = models.CharField(max_length=128,blank=True,null=False,verbose_name='Street/P.O. Box')
   addressstate = models.CharField(max_length=128,blank=True,null=False,verbose_name='State/Province')
   addresszip = models.CharField(max_length=128,blank=True,null=False,verbose_name='Zip/Postal Code')
-  addresscountry = models.ForeignKey('Country',null=True,blank=True,default=None,verbose_name='Country')
+  addresscountry = models.ForeignKey('Country',null=True,blank=True,default=None,verbose_name='Country',
+                                     on_delete=models.PROTECT)
 
   # Donor specific info
   paypalemail = models.EmailField(max_length=128,unique=True,null=True,blank=True,verbose_name='Paypal Email')
@@ -179,22 +181,22 @@ class Donor(models.Model):
       return self.alias
     return self.email
 
-  ANONYMOUS = u'(Anonymous)'
+  ANONYMOUS = '(Anonymous)'
 
   def visible_name(self):
     if self.visibility == 'ANON':
       return Donor.ANONYMOUS
     elif self.visibility == 'ALIAS':
-      return self.alias or u'(No Name)'
+      return self.alias or '(No Name)'
     last_name,first_name = self.lastname,self.firstname
     if not last_name and not first_name:
-      return self.alias or u'(No Name)'
+      return self.alias or '(No Name)'
     if self.visibility == 'FIRST':
-      last_name = last_name[:1] + u'...'
-    return last_name + u', ' + first_name + (u'' if self.alias == None else u' (' + self.alias + u')')
+      last_name = last_name[:1] + '...'
+    return last_name + ', ' + first_name + ('' if self.alias == None else ' (' + self.alias + ')')
 
   def full(self):
-    return unicode(self.email) + u' (' + unicode(self) + u')'
+    return str(self.email) + ' (' + str(self) + ')'
 
   def get_absolute_url(self, event=None):
     return reverse('tracker:donor', args=(self.id,event.id) if event and event.id else (self.id,))
@@ -202,17 +204,17 @@ class Donor(models.Model):
   def __repr__(self):
     return self.visible_name().encode('utf-8')
 
-  def __unicode__(self):
+  def __str__(self):
     if not self.lastname and not self.firstname:
-      return self.alias or u'(No Name)'
-    ret = unicode(self.lastname) + ', ' + unicode(self.firstname)
+      return self.alias or '(No Name)'
+    ret = str(self.lastname) + ', ' + str(self.firstname)
     if self.alias:
-      ret += u' (' + unicode(self.alias) + u')'
+      ret += ' (' + str(self.alias) + ')'
     return ret
 
 class DonorCache(models.Model):
-  event = models.ForeignKey('Event',blank=True,null=True) # null event = all events
-  donor = models.ForeignKey('Donor')
+  event = models.ForeignKey('Event', blank=True, null=True, on_delete=models.PROTECT)  # null event = all events
+  donor = models.ForeignKey('Donor', on_delete=models.PROTECT)
   donation_total = models.DecimalField(decimal_places=2,max_digits=20,validators=[positive,nonzero],editable=False,default=0)
   donation_count = models.IntegerField(validators=[positive,nonzero],editable=False,default=0)
   donation_avg = models.DecimalField(decimal_places=2,max_digits=20,validators=[positive,nonzero],editable=False,default=0)
@@ -247,8 +249,8 @@ class DonorCache(models.Model):
     self.donation_max = aggregate['max'] or 0
     self.donation_avg = aggregate['avg'] or 0
 
-  def __unicode__(self):
-    return unicode(self.donor)
+  def __str__(self):
+    return str(self.donor)
 
   @property
   def donation_set(self):

@@ -1,20 +1,17 @@
-from itertools import ifilter
+import json
 
-from tracker.models import *
-from tracker.forms import *
-from . import common as views_common
+import django.core.paginator as paginator
+from django.core import serializers
+from django.db.models import Count, Sum, Max, Avg, F
+from django.http import HttpResponse, HttpResponseRedirect
+from django.urls import reverse
+from django.views.decorators.cache import cache_page
+
 import tracker.filters as filters
 import tracker.viewutil as viewutil
-
-from django.db.models import Count, Sum, Max, Avg, Q, F
-import django.core.paginator as paginator
-from django.http import HttpResponse,HttpResponseRedirect
-from django.views.decorators.cache import cache_page
-from django.core.urlresolvers import reverse
-from django.core import serializers
-
-from decimal import Decimal
-import json
+from tracker.forms import *
+from tracker.models import *
+from . import common as views_common
 
 __all__ = [
   'eventlist',
@@ -61,7 +58,7 @@ def get_bid_children(bid, bids):
 def get_bid_ancestors(bid, bids):
   while bid.parent_id:
     if bid.parent_id:
-      bid = next(ifilter(lambda parent: parent.id == bid.parent_id, bids))
+      bid = next(filter(lambda parent: parent.id == bid.parent_id, bids))
       yield bid
 
 def bid_info(bid, bids, speedrun=None, event=None):
@@ -276,7 +273,7 @@ def run(request,id):
     event = run.event
     bids = filters.run_model_query('bid', {'run': id})
     bids = viewutil.get_tree_queryset_descendants(Bid, bids, include_self=True).select_related('speedrun','event', 'parent').prefetch_related('options')
-    topLevelBids = filter(lambda bid: bid.parent == None, bids)
+    topLevelBids = [bid for bid in bids if bid.parent == None]
 
     return views_common.tracker_response(request, 'tracker/run.html', { 'event': event, 'run' : run, 'runners': runners, 'bids' : topLevelBids })
 

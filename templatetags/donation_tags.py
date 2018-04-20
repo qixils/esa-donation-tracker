@@ -5,7 +5,7 @@ from django.conf import settings
 
 import datetime
 import locale
-import urllib
+import urllib.request, urllib.parse, urllib.error
 
 import tracker.viewutil as viewutil
 
@@ -18,8 +18,8 @@ def tryresolve(var, context, default=None):
     return default
 
 def sortlink(style, contents, **args):
-  return format_html(u'<a href="?{args}"{style}><span style="display:none;">{contents}</span></a>',
-                     args=urllib.urlencode([a for a in args.items() if a[1]]),
+  return format_html('<a href="?{args}"{style}><span style="display:none;">{contents}</span></a>',
+                     args=urllib.parse.urlencode([a for a in list(args.items()) if a[1]]),
                      style=format_html(' class="{style}"', style=style) if style else '',
                      contents=contents)
 
@@ -143,7 +143,7 @@ def do_bid(bid):
 @register.simple_tag(takes_context=True, name='donor_link')
 def donor_link(context, donor, event=None):
   if donor.visibility != 'ANON':
-    return format_html(u'<a href="{url}">{name}</a>', url=donor.get_absolute_url(event), name=donor.visible_name())
+    return format_html('<a href="{url}">{name}</a>', url=donor.get_absolute_url(event), name=donor.visible_name())
   else:
     return donor.ANONYMOUS
 
@@ -196,7 +196,7 @@ def public_user_name(user):
     if user.donor:
         return user.donor.visible_name()
     elif user.username == user.email:
-        return u'Anonymous'
+        return 'Anonymous'
     else:
         return user.username
 

@@ -1,8 +1,9 @@
 from django.contrib.admin import models
 from django.contrib.contenttypes.models import ContentType
-from django.utils.translation import ugettext as _
-from django.utils.encoding import force_unicode
+from django.utils.encoding import force_text
 from django.utils.text import get_text_list
+from django.utils.translation import ugettext as _
+
 
 def get_change_message(fields):
     """
@@ -18,7 +19,7 @@ def addition(request, object):
         user_id=request.user.pk,
         content_type_id=ContentType.objects.get_for_model(object).pk,
         object_id=object.pk,
-        object_repr=force_unicode(object),
+        object_repr=force_text(object),
         action_flag=models.ADDITION
     )
 
@@ -29,7 +30,7 @@ def change(request, object, message_or_fields):
     The argument *message_or_fields* must be a sequence of modified field names
     or a custom change message.
     """
-    if isinstance(message_or_fields, basestring):
+    if isinstance(message_or_fields, str):
         message = message_or_fields
     else:
         message = get_change_message(message_or_fields)
@@ -37,7 +38,7 @@ def change(request, object, message_or_fields):
         user_id=request.user.pk,
         content_type_id=ContentType.objects.get_for_model(object).pk,
         object_id=object.pk,
-        object_repr=force_unicode(object),
+        object_repr=force_text(object),
         action_flag=models.CHANGE,
         change_message=message
     )
@@ -50,7 +51,7 @@ def deletion(request, object, object_repr=None):
         user_id=request.user.id,
         content_type_id=ContentType.objects.get_for_model(object).pk,
         object_id=object.pk,
-        object_repr=object_repr or force_unicode(object),
+        object_repr=object_repr or force_text(object),
         action_flag=models.DELETION
     )
 
@@ -162,7 +163,7 @@ class AdminLogCollector(object):
     def __repr__(self):
         return repr(self.get_collected())
 
-    def __nonzero__(self):
+    def __bool__(self):
         return any(self.get_collected())
 
     def added(self, instance):
@@ -175,7 +176,7 @@ class AdminLogCollector(object):
         """
         Collect a change log.
         """
-        if not isinstance(message_or_fields, basestring):
+        if not isinstance(message_or_fields, str):
             message_or_fields = tuple(message_or_fields)
         self._changed.add((instance, message_or_fields))
 

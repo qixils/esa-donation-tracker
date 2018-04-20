@@ -1,22 +1,19 @@
-import django.contrib.auth.tokens
-from django.views.decorators.cache import never_cache
-from django.contrib.auth.decorators import login_required
 import django.contrib.auth as djauth
+import django.contrib.auth.tokens
 import django.contrib.auth.views as djauth_views
 import django.utils.http
-from django.views.decorators.csrf import csrf_protect, csrf_exempt, get_token as get_csrf_token
-from django.core.urlresolvers import reverse
-from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseRedirect
-from django.template import Context
+from django.shortcuts import render
+from django.urls import reverse
 from django.utils.six.moves.urllib.parse import urlparse
+from django.views.decorators.cache import never_cache
 
 import settings
-
-import tracker.forms as forms
-from . import common as views_common
-import tracker.viewutil as viewutil
 import tracker.auth
+import tracker.forms as forms
+import tracker.viewutil as viewutil
+from . import common as views_common
 
 __all__ = [
     'login',

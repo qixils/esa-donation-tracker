@@ -4,6 +4,7 @@ import random
 
 from . import util
 from .models import *
+from functools import reduce
 
 def draw_prize(prize, seed=None):
     eligible = prize.eligible_donors()

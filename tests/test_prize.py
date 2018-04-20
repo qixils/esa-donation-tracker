@@ -171,7 +171,7 @@ class TestPrizeDrawingGeneratedEvent(TransactionTestCase):
                                                   maxAmount=prize.minimumbid + Decimal('100.00'), minTime=prize.end_draw_time() + datetime.timedelta(seconds=1))
             donation3.save()
         eligibleDonors = prize.eligible_donors()
-        self.assertEqual(len(donationDonors.keys()), len(eligibleDonors))
+        self.assertEqual(len(list(donationDonors.keys())), len(eligibleDonors))
         for eligibleDonor in eligibleDonors:
             found = False
             if eligibleDonor['donor'] in donationDonors:
@@ -230,7 +230,7 @@ class TestPrizeDrawingGeneratedEvent(TransactionTestCase):
             if donationDonors[donor.id]['amount'] < prize.minimumbid:
                 del donationDonors[donor.id]
         eligibleDonors = prize.eligible_donors()
-        self.assertEqual(len(donationDonors.keys()), len(eligibleDonors))
+        self.assertEqual(len(list(donationDonors.keys())), len(eligibleDonors))
         for eligibleDonor in eligibleDonors:
             found = False
             if eligibleDonor['donor'] in donationDonors:
@@ -349,7 +349,7 @@ class TestPrizeDrawingGeneratedEvent(TransactionTestCase):
                     donation = randgen.generate_donation(self.rand, donor=donor, event=self.event, minAmount=Decimal(
                         '1000.01'), maxAmount=prize.minimumbid - Decimal('2000.00'), minTime=prize.end_draw_time() + datetime.timedelta(seconds=1))
                 donation.save()
-        maxDonor = max(donationDonors.items(), key=lambda x: x[1]['amount'])[1]
+        maxDonor = max(list(donationDonors.items()), key=lambda x: x[1]['amount'])[1]
         eligibleDonors = prize.eligible_donors()
         self.assertEqual(1, len(eligibleDonors))
         self.assertEqual(maxDonor['donor'].id, eligibleDonors[0]['donor'])
@@ -363,7 +363,7 @@ class TestPrizeDrawingGeneratedEvent(TransactionTestCase):
             self.assertEqual(maxDonor['donor'].id, prize.get_winner().id)
         oldMaxDonor = maxDonor
         del donationDonors[oldMaxDonor['donor'].id]
-        maxDonor = max(donationDonors.items(), key=lambda x: x[1]['amount'])[1]
+        maxDonor = max(list(donationDonors.items()), key=lambda x: x[1]['amount'])[1]
         diff = oldMaxDonor['amount'] - maxDonor['amount']
         newDonor = maxDonor['donor']
         newDonation = randgen.generate_donation(self.rand, donor=newDonor, event=self.event, minAmount=diff + Decimal(
@@ -416,7 +416,7 @@ class TestDonorPrizeEntryDraw(TransactionTestCase):
             donors.append(donor.pk)
         eligible = prize.eligible_donors()
         self.assertEqual(numDonors, len(eligible))
-        for donorId in map(lambda x: x['donor'], eligible):
+        for donorId in [x['donor'] for x in eligible]:
             self.assertTrue(donorId in donors)
 
 
@@ -441,15 +441,15 @@ class TestPrizeMultiWin(TransactionTestCase):
         result, msg = prizeutil.draw_prize(prize)
         self.assertTrue(result, msg)
         prizeWinner = models.PrizeWinner.objects.get(winner=donor, prize=prize)
-        self.assertEquals(1, prizeWinner.pendingcount)
+        self.assertEqual(1, prizeWinner.pendingcount)
         result, msg = prizeutil.draw_prize(prize)
         self.assertTrue(result, msg)
         prizeWinner = models.PrizeWinner.objects.get(winner=donor, prize=prize)
-        self.assertEquals(2, prizeWinner.pendingcount)
+        self.assertEqual(2, prizeWinner.pendingcount)
         result, msg = prizeutil.draw_prize(prize)
         self.assertTrue(result, msg)
         prizeWinner = models.PrizeWinner.objects.get(winner=donor, prize=prize)
-        self.assertEquals(3, prizeWinner.pendingcount)
+        self.assertEqual(3, prizeWinner.pendingcount)
         result, msg = prizeutil.draw_prize(prize)
         self.assertFalse(result, msg)
 
@@ -467,7 +467,7 @@ class TestPrizeMultiWin(TransactionTestCase):
         result, msg = prizeutil.draw_prize(prize)
         self.assertTrue(result)
         prizeWinner = models.PrizeWinner.objects.get(winner=donor, prize=prize)
-        self.assertEquals(2, prizeWinner.pendingcount)
+        self.assertEqual(2, prizeWinner.pendingcount)
         result, msg = prizeutil.draw_prize(prize)
         self.assertFalse(result)
 
@@ -485,7 +485,7 @@ class TestPrizeMultiWin(TransactionTestCase):
         result, msg = prizeutil.draw_prize(prize)
         self.assertTrue(result)
         prizeWinner = models.PrizeWinner.objects.get(winner=donor, prize=prize)
-        self.assertEquals(2, prizeWinner.pendingcount)
+        self.assertEqual(2, prizeWinner.pendingcount)
         result, msg = prizeutil.draw_prize(prize)
         self.assertFalse(result)
 
@@ -509,7 +509,7 @@ class TestPrizeMultiWin(TransactionTestCase):
         self.assertTrue(result)
         prizeWinner = models.PrizeWinner.objects.get(
             winner=donor2, prize=prize)
-        self.assertEquals(1, prizeWinner.pendingcount)
+        self.assertEqual(1, prizeWinner.pendingcount)
         result, msg = prizeutil.draw_prize(prize)
         self.assertTrue(result)
         result, msg = prizeutil.draw_prize(prize)

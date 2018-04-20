@@ -2,15 +2,20 @@ import re
 import operator
 
 from django.db.models import Count,Sum,Max,Avg,Q
-from django.core.urlresolvers import reverse
 from django.http import Http404
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.conf import settings
+from django.urls import reverse
 
 from .models import *
 from . import filters
+from functools import reduce
 
+
+def cmp(a, b):
+  """Python 3 doesn't have cmp() built in anymore, so use this replacement logic."""
+  return (a > b) - (a < b)
 
 def get_default_email_host_user():
   return getattr(settings, 'EMAIL_HOST_USER', '')
@@ -24,16 +29,14 @@ def admin_url(obj):
 # Adapted from http://djangosnippets.org/snippets/1474/
 def get_request_server_url(request):
     if request:
-        serverName = request.META['SERVER_NAME']
-        protocol = "https://" if request.is_secure() else "http://"
-        return protocol + serverName
+        return request.build_absolute_uri('/').rstrip('/')  # Get hostname only, no leading slashes
     else:
         raise Exception("Request was null.")
 
 def get_referer_site(request):
   origin = request.META.get('HTTP_ORIGIN', None)
   if origin != None:
-    return re.sub(r'^https?:\/\/', '', origin)
+    return re.sub(r'^https?:/\/', '', origin)
   else:
     return None
 

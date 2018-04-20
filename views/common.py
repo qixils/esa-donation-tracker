@@ -61,7 +61,7 @@ def tracker_response(request, template='tracker/index.html', qdict=None, status=
         if 'queries' in request.GET and request.user.has_perm('tracker.view_queries'):
             resp = HttpResponse(json.dumps(connection.queries, ensure_ascii=False, indent=1),content_type='application/json;charset=utf-8')
         cache_control = {}
-        if request.user.is_anonymous():
+        if request.user.is_anonymous:
             cache_control['public'] = True
         else:
             resp['X-Render-Time'] = render_time
@@ -69,7 +69,7 @@ def tracker_response(request, template='tracker/index.html', qdict=None, status=
             cache_control['max-age'] = 0
         patch_cache_control(resp, **cache_control)
         return resp
-    except Exception,e:
+    except Exception as e:
         if request.user.is_staff and not settings.DEBUG:
-            return HttpResponse(unicode(type(e)) + '\n\n' + unicode(e), content_type='text/plain', status=500)
+            return HttpResponse(str(type(e)) + '\n\n' + str(e), content_type='text/plain', status=500)
         raise

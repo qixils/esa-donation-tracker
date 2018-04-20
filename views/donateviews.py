@@ -1,31 +1,28 @@
-from decimal import Decimal
-import pytz
-import json
-import urllib2
 import datetime
+import json
 import random
 import traceback
-
-from django.db import transaction
-from django.db.models import Sum
-from django.http import HttpResponse,Http404
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.cache import never_cache, cache_page
-from django.core import serializers
-from django.core.urlresolvers import reverse
-
-from paypal.standard.forms import PayPalPaymentsForm
-from paypal.standard.ipn.models import PayPalIPN
-from paypal.standard.ipn.forms import PayPalIPNForm
+import urllib.error
+import urllib.parse
+import urllib.request
+from decimal import Decimal
 
 import post_office.mail
+import pytz
+from django.core import serializers
+from django.db import transaction
+from django.db.models import Sum
+from django.http import HttpResponse, Http404
+from django.urls import reverse
+from django.views.decorators.cache import never_cache, cache_page
+from django.views.decorators.csrf import csrf_exempt
 
-from . import common as views_common
-import tracker.models as models
-import tracker.forms as forms
-import tracker.viewutil as viewutil
 import tracker.filters as filters
+import tracker.forms as forms
+import tracker.models as models
 import tracker.paypalutil as paypalutil
+import tracker.viewutil as viewutil
+from . import common as views_common
 
 __all__ = [
   'paypal_cancel',
@@ -87,22 +84,20 @@ def donate(request, event):
           donation.full_clean()
           donation.save()
 
-        serverURL = viewutil.get_request_server_url(request)
-
         paypal_dict = {
           "amount": str(donation.amount),
           "cmd": "_donations",
           "business": donation.event.paypalemail,
           "item_name": donation.event.receivername,
-          "notify_url": serverURL + reverse('tracker:ipn'),
-          "return_url": serverURL + reverse('tracker:paypal_return'),
-          "cancel_return": serverURL + reverse('tracker:paypal_cancel'),
+          "notify_url": request.build_absolute_uri(reverse('tracker:ipn')),
+          "return_url": request.build_absolute_uri(reverse('tracker:paypal_return')),
+          "cancel_return": request.build_absolute_uri(reverse('tracker:paypal_cancel')),
           "custom": str(donation.id) + ":" + donation.domainId,
           "currency_code": donation.event.paypalcurrency,
           "no_shipping": 0,
         }
         # Create the form instance
-        form = PayPalPaymentsForm(button_type="donate", sandbox=donation.event.usepaypalsandbox, initial=paypal_dict)
+        form = forms.PayPalDonationsForm(button_type="donate", sandbox=donation.event.usepaypalsandbox, initial=paypal_dict)
         context = {"event": donation.event, "form": form }
         return views_common.tracker_response(request, "tracker/paypal_redirect.html", context)
     else:
@@ -133,7 +128,7 @@ def donate(request, event):
     if bid.speedrun:
       result['runname'] = bid.speedrun.name
     if bid.suggestions.exists():
-      result['suggested'] = list(map(lambda x: x.name, bid.suggestions.all()))
+      result['suggested'] = list([x.name for x in bid.suggestions.all()])
     if bid.allowuseroptions:
       result['custom'] = ['custom']
       result['label'] += ' (select and add a name next to "New Option Name")'
@@ -214,8 +209,8 @@ def ipn(request):
       postbackJSon = json.dumps(postbackData, ensure_ascii=False, cls=serializers.json.DjangoJSONEncoder).encode('utf-8')
       postbacks = models.PostbackURL.objects.filter(event=donation.event)
       for postback in postbacks:
-        opener = urllib2.build_opener()
-        req = urllib2.Request(postback.url, postbackJSon, headers={'Content-Type': 'application/json; charset=utf-8'})
+        opener = urllib.request.build_opener()
+        req = urllib.request.Request(postback.url, postbackJSon, headers={'Content-Type': 'application/json; charset=utf-8'})
         response = opener.open(req, timeout=5)
     elif donation.transactionstate == 'CANCELLED':
       # eventually we may want to send out e-mail for some of the possible cases

@@ -24,7 +24,7 @@ __all__ = [
   'Submission',
 ]
 
-_timezoneChoices = list(map(lambda x: (x,x), pytz.common_timezones))
+_timezoneChoices = list([(x,x) for x in pytz.common_timezones])
 _currencyChoices = (('USD','US Dollars'),('CAD', 'Canadian Dollars'))
 
 
@@ -32,7 +32,7 @@ class TimestampValidator(validators.RegexValidator):
   regex = r'(?:(?:(\d+):)?(?:(\d+):))?(\d+)(?:\.(\d{1,3}))?$'
   def __call__(self, value):
     super(TimestampValidator, self).__call__(value)
-    h,m,s,ms = re.match(self.regex, unicode(value)).groups()
+    h,m,s,ms = re.match(self.regex, str(value)).groups()
     if h is not None and int(m) >= 60:
       raise ValidationError('Minutes cannot be 60 or higher if the hour part is specified')
     if m is not None and int(s) >= 60:
@@ -53,7 +53,7 @@ class TimestampField(models.Field):
     return self.to_python(value)
 
   def to_python(self, value):
-    if isinstance(value, basestring):
+    if isinstance(value, str):
       try:
         value = TimestampField.time_string_to_int(value)
       except ValueError:
@@ -84,7 +84,7 @@ class TimestampField(models.Field):
         return int(value) * 1000
     except ValueError:
       pass
-    if not isinstance(value, basestring):
+    if not isinstance(value, str):
       return value
     if not value: return 0
     match = TimestampField.match_string.match(value)
@@ -136,16 +136,16 @@ class Event(models.Model):
   timezone = TimeZoneField(default='US/Eastern')
   locked = models.BooleanField(default=False,help_text='Requires special permission to edit this event or anything associated with it')
   # Fields related to prize management
-  prizecoordinator = models.ForeignKey(User, default=None, null=True, blank=True, verbose_name='Prize Coordinator', help_text='The person responsible for managing prize acceptance/distribution')
+  prizecoordinator = models.ForeignKey(User, default=None, null=True, blank=True, verbose_name='Prize Coordinator', help_text='The person responsible for managing prize acceptance/distribution', on_delete=models.PROTECT)
   allowed_prize_countries = models.ManyToManyField('Country', blank=True, verbose_name="Allowed Prize Countries", help_text="List of countries whose residents are allowed to receive prizes (leave blank to allow all countries)")
   disallowed_prize_regions = models.ManyToManyField('CountryRegion', blank=True, verbose_name='Disallowed Regions', help_text='A blacklist of regions within allowed countries that are not allowed for drawings (e.g. Quebec in Canada)')
   prize_accept_deadline_delta = models.IntegerField(default=14, null=False, blank=False, verbose_name='Prize Accept Deadline Delta', help_text='The number of days a winner will be given to accept a prize before it is re-rolled.', validators=[positive, nonzero])
-  prizecontributoremailtemplate = models.ForeignKey(post_office.models.EmailTemplate, default=None, null=True, blank=True, verbose_name='Prize Contributor Accept/Deny Email Template', help_text="Email template to use when responding to prize contributor's submission requests", related_name='event_prizecontributortemplates')
-  prizewinneremailtemplate = models.ForeignKey(post_office.models.EmailTemplate, default=None, null=True, blank=True, verbose_name='Prize Winner Email Template', help_text="Email template to use when someone wins a prize.", related_name='event_prizewinnertemplates')
-  prizewinneracceptemailtemplate = models.ForeignKey(post_office.models.EmailTemplate, default=None, null=True, blank=True, verbose_name='Prize Accepted Email Template', help_text="Email template to use when someone accepts a prize (and thus it needs to be shipped).", related_name='event_prizewinneraccepttemplates')
-  prizeshippedemailtemplate = models.ForeignKey(post_office.models.EmailTemplate, default=None, null=True, blank=True, verbose_name='Prize Shipped Email Template', help_text="Email template to use when the aprize has been shipped to its recipient).", related_name='event_prizeshippedtemplates')
+  prizecontributoremailtemplate = models.ForeignKey(post_office.models.EmailTemplate, default=None, null=True, blank=True, verbose_name='Prize Contributor Accept/Deny Email Template', help_text="Email template to use when responding to prize contributor's submission requests", related_name='event_prizecontributortemplates', on_delete=models.PROTECT)
+  prizewinneremailtemplate = models.ForeignKey(post_office.models.EmailTemplate, default=None, null=True, blank=True, verbose_name='Prize Winner Email Template', help_text="Email template to use when someone wins a prize.", related_name='event_prizewinnertemplates', on_delete=models.PROTECT)
+  prizewinneracceptemailtemplate = models.ForeignKey(post_office.models.EmailTemplate, default=None, null=True, blank=True, verbose_name='Prize Accepted Email Template', help_text="Email template to use when someone accepts a prize (and thus it needs to be shipped).", related_name='event_prizewinneraccepttemplates', on_delete=models.PROTECT)
+  prizeshippedemailtemplate = models.ForeignKey(post_office.models.EmailTemplate, default=None, null=True, blank=True, verbose_name='Prize Shipped Email Template', help_text="Email template to use when the aprize has been shipped to its recipient).", related_name='event_prizeshippedtemplates', on_delete=models.PROTECT)
 
-  def __unicode__(self):
+  def __str__(self):
     return self.name
 
   def natural_key(self):
@@ -260,7 +260,7 @@ class SpeedRun(models.Model):
         except Runner.DoesNotExist:
           pass
       if self.runners.exists():
-        self.deprecated_runners = u', '.join(unicode(r) for r in self.runners.all())
+        self.deprecated_runners = ', '.join(str(r) for r in self.runners.all())
 
     super(SpeedRun, self).save(*args, **kwargs)
 
@@ -284,10 +284,10 @@ class SpeedRun(models.Model):
 
   def name_with_category(self):
     categoryString = ' ' + self.category if self.category else ''
-    return u'{0}{1}'.format(self.name, categoryString)
+    return '{0}{1}'.format(self.name, categoryString)
 
-  def __unicode__(self):
-    return u'{0} ({1})'.format(self.name_with_category(), self.event)
+  def __str__(self):
+    return '{0} ({1})'.format(self.name_with_category(), self.event)
 
 
 class Runner(models.Model):
@@ -306,12 +306,12 @@ class Runner(models.Model):
   stream = models.URLField(max_length=128, blank=True)
   twitter = models.SlugField(max_length=15, blank=True)
   youtube = models.SlugField(max_length=20, blank=True)
-  donor = models.OneToOneField('tracker.Donor', blank=True, null=True)
+  donor = models.OneToOneField('tracker.Donor', blank=True, null=True, on_delete=models.PROTECT)
 
   def natural_key(self):
     return (self.name,)
 
-  def __unicode__(self):
+  def __str__(self):
     return self.name
 
 
@@ -320,14 +320,14 @@ class Submission(models.Model):
     app_label = 'tracker'
 
   external_id = models.IntegerField(primary_key=True)
-  run = models.ForeignKey('SpeedRun')
-  runner = models.ForeignKey('Runner')
+  run = models.ForeignKey('SpeedRun', on_delete=models.PROTECT)
+  runner = models.ForeignKey('Runner', on_delete=models.PROTECT)
   game_name = models.CharField(max_length=64)
   category = models.CharField(max_length=64)
   console = models.CharField(max_length=32)
   estimate = TimestampField(always_show_h=True)
 
-  def __unicode__(self):
+  def __str__(self):
     return '%s (%s) by %s' % (self.game_name, self.category, self.runner)
 
   def save(self, *args, **kwargs):

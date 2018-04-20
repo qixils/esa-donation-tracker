@@ -1,33 +1,28 @@
-from django.contrib import admin
-from django.conf.urls import url
-from django.core.exceptions import ImproperlyConfigured, PermissionDenied
-from django.core.urlresolvers import reverse
-from django.utils.html import escape
-from django.utils.text import Truncator
-from django.utils.safestring import mark_safe
-from django.contrib.admin import widgets
-from django.contrib.admin import SimpleListFilter
-from django.contrib.admin.widgets import ManyToManyRawIdWidget
-from django.utils.encoding import smart_unicode
-from django.utils.html import escape
-from django.http import HttpResponse, HttpResponseRedirect, Http404
-from django.contrib import messages
-from django.shortcuts import render, redirect
+from functools import reduce
+
+import django.contrib.admin.models
 import django.forms as djforms
-import django.contrib.auth.models
+from django.contrib import admin
+from django.contrib import messages
+from django.contrib.admin import SimpleListFilter
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import permission_required, REDIRECT_FIELD_NAME
+from django.core.exceptions import PermissionDenied
+from django.http import HttpResponse, HttpResponseRedirect, Http404
+from django.shortcuts import render, redirect
+from django.urls import reverse, path
+from django.utils.safestring import mark_safe
 
 import settings
-
-import tracker.viewutil as viewutil
-import tracker.prizeutil as prizeutil
-import tracker.views as views
+import tracker.filters as filters
 import tracker.forms as forms
+import tracker.logutil as logutil
 import tracker.models
 import tracker.prizemail as prizemail
-import tracker.filters as filters
-import tracker.logutil as logutil
+import tracker.prizeutil as prizeutil
+import tracker.views as views
+import tracker.viewutil as viewutil
+
 
 def admin_auth(perm=None, redirect_field_name=REDIRECT_FIELD_NAME, login_url='admin:login'):
   def impl_dec(viewFunc):
@@ -44,7 +39,7 @@ from ajax_select import make_ajax_field
 from ajax_select.admin import AjaxSelectAdmin
 
 def reverse_lazy(url):
-	return lambda: reverse(url)
+  return lambda: reverse(url)
 
 def latest_event_id():
   try:
@@ -60,9 +55,9 @@ class CustomStackedInline(admin.StackedInline):
   def edit_link(self, instance):
     if instance.id != None:
       url = reverse('admin:{l}_{m}_change'.format(l=instance._meta.app_label,m=instance._meta.model_name), args=[instance.id])
-      return mark_safe(u'<a href="{u}">Edit</a>'.format(u=url))
+      return mark_safe('<a href="{u}">Edit</a>'.format(u=url))
     else:
-      return mark_safe(u'Not Saved Yet')
+      return mark_safe('Not Saved Yet')
 
 def ReadOffsetTokenPair(value):
   toks = value.split('-')
@@ -104,7 +99,7 @@ class BidParentFilter(SimpleListFilter):
   def queryset(self, request, queryset):
     try:
       queryset = queryset.filter(parent__isnull=True if int(self.value()) == 1 else False)
-    except TypeError,ValueError: # self.value cannot be converted to int for whatever reason
+    except TypeError as ValueError: # self.value cannot be converted to int for whatever reason
       pass
     return queryset
 
@@ -233,7 +228,7 @@ class BidAdmin(CustomModelAdmin):
   ]
   inlines = [BidOptionInline, BidDependentsInline]
   def parentlong(self, obj):
-    return unicode(obj.parent or obj.speedrun or obj.event)
+    return str(obj.parent or obj.speedrun or obj.event)
   def parent_(self, obj):
     targetObject = None
     if obj.parent:
@@ -243,9 +238,9 @@ class BidAdmin(CustomModelAdmin):
     elif obj.event:
       targetObject = obj.event
     if targetObject:
-      return mark_safe('<a href={0}>{1}</a>'.format(unicode(viewutil.admin_url(targetObject)), targetObject))
+      return mark_safe('<a href={0}>{1}</a>'.format(str(viewutil.admin_url(targetObject)), targetObject))
     else:
-      return u'<None>'
+      return '<None>'
   parentlong.short_description = 'Parent'
   def get_queryset(self, request):
     event = viewutil.get_selected_event(request)
@@ -283,14 +278,14 @@ class BidAdmin(CustomModelAdmin):
 @admin_auth('tracker.change_bid')
 def merge_bids_view(request, *args, **kwargs):
   if request.method == 'POST':
-    objects = map(lambda x: int(x), request.POST['objects'].split(','))
+    objects = [int(x) for x in request.POST['objects'].split(',')]
     form = forms.MergeObjectsForm(model=tracker.models.Bid,objects=objects, data=request.POST)
     if form.is_valid():
       viewutil.merge_bids(form.cleaned_data['root'], form.cleaned_data['objects'])
-      logutil.change(request, form.cleaned_data['root'], u'Merged bid {0} with {1}'.format(form.cleaned_data['root'], ','.join(map(lambda d: unicode(d), form.cleaned_data['objects']))))
+      logutil.change(request, form.cleaned_data['root'], 'Merged bid {0} with {1}'.format(form.cleaned_data['root'], ','.join([str(d) for d in form.cleaned_data['objects']])))
       return HttpResponseRedirect(reverse('admin:tracker_bid_changelist'))
   else:
-    objects = map(lambda x: int(x), request.GET['objects'].split(','))
+    objects = [int(x) for x in request.GET['objects'].split(',')]
     form = forms.MergeObjectsForm(model=tracker.models.Bid,objects=objects)
   return render(request, 'admin/merge_bids.html', dictionary={'form': form})
 
@@ -411,7 +406,7 @@ class DonationAdmin(CustomModelAdmin):
       donation.delete()
       count += 1
     self.message_user(request, "Deleted %d donations." % count)
-    viewutil.tracker_log(u'donation', u'Deleted {0} orphaned donations'.format(count), user=request.user)
+    viewutil.tracker_log('donation', 'Deleted {0} orphaned donations'.format(count), user=request.user)
   cleanup_orphaned_donations.short_description = 'Clear out incomplete donations.'
 
   def get_list_display(self, request):
@@ -486,7 +481,7 @@ class PrizeWinnerInline(CustomStackedInline):
 class PrizeWinnerAdmin(CustomModelAdmin):
   form = PrizeWinnerForm
   search_fields = ['prize__name', 'winner__email']
-  list_display = ['__unicode__', 'prize', 'winner']
+  list_display = ['__str__', 'prize', 'winner']
   readonly_fields = ['winner_email',]
   fieldsets = [
     (None, { 'fields': ['prize', 'winner', 'winner_email', 'emailsent', 'pendingcount', 'acceptcount', 'declinecount', 'acceptdeadline', ], }),
@@ -509,12 +504,6 @@ class DonorPrizeEntryForm(djforms.ModelForm):
   class Meta:
     model = tracker.models.DonorPrizeEntry
     exclude = ('', '')
-
-class DonorPrizeEntryInline(CustomStackedInline):
-  form = DonorPrizeEntryForm
-  model = tracker.models.DonorPrizeEntry
-  readonly_fields = ['edit_link']
-  extra = 0
 
 class DonorPrizeEntryAdmin(CustomModelAdmin):
   form = DonorPrizeEntryForm
@@ -540,15 +529,6 @@ class DonorPrizeEntryInline(CustomStackedInline):
   readonly_fields = ['edit_link']
   extra = 0
 
-class DonorPrizeEntryAdmin(CustomModelAdmin):
-  form = DonorPrizeEntryForm
-  model = tracker.models.DonorPrizeEntry
-  search_fields = ['prize__name', 'donor__email', 'donor__alias', 'donor__firstname', 'donor__lastname']
-  list_display = ['prize', 'donor', 'weight']
-  fieldsets = [
-    (None, {'fields': ['donor', 'prize', 'weight']}),
-  ]
-
 class DonorForm(djforms.ModelForm):
   addresscountry = make_ajax_field(tracker.models.Donor, 'addresscountry', 'country')
   user = make_ajax_field(tracker.models.Donor, 'user', 'user')
@@ -561,7 +541,7 @@ class DonorAdmin(CustomModelAdmin):
   search_fields = ('email', 'paypalemail', 'alias', 'firstname', 'lastname')
   list_filter = ('donation__event', 'visibility')
   readonly_fields = ('visible_name',)
-  list_display = ('__unicode__', 'visible_name', 'alias', 'visibility')
+  list_display = ('__str__', 'visible_name', 'alias', 'visibility')
   fieldsets = [
     (None, { 'fields': ['email', 'alias', 'firstname', 'lastname', 'visibility', 'visible_name', 'user', 'solicitemail'] }),
     ('Donor Info', {
@@ -586,14 +566,14 @@ class DonorAdmin(CustomModelAdmin):
 @admin_auth('tracker.change_donor')
 def merge_donors_view(request, *args, **kwargs):
   if request.method == 'POST':
-    objects = map(lambda x: int(x), request.POST['objects'].split(','))
+    objects = [int(x) for x in request.POST['objects'].split(',')]
     form = forms.MergeObjectsForm(model=tracker.models.Donor,objects=objects, data=request.POST)
     if form.is_valid():
       viewutil.merge_donors(form.cleaned_data['root'], form.cleaned_data['objects'])
-      logutil.change(request, form.cleaned_data['root'], u'Merged donor {0} with {1}'.format(form.cleaned_data['root'], ','.join(map(lambda d: unicode(d), form.cleaned_data['objects']))))
+      logutil.change(request, form.cleaned_data['root'], 'Merged donor {0} with {1}'.format(form.cleaned_data['root'], ','.join([str(d) for d in form.cleaned_data['objects']])))
       return HttpResponseRedirect(reverse('admin:tracker_donor_changelist'))
   else:
-    donors = map(lambda x: int(x), request.GET['objects'].split(','))
+    donors = [int(x) for x in request.GET['objects'].split(',')]
     form = forms.MergeObjectsForm(model=tracker.models.Donor,donors=donors)
   return render(request, 'admin/merge_donors.html', dictionary={'form': form})
 
@@ -692,7 +672,9 @@ class PrizeInline(CustomStackedInline):
 
 class PrizeAdmin(CustomModelAdmin):
   form = PrizeForm
-  list_display = ('name', 'category', 'bidrange', 'games', 'start_draw_time', 'end_draw_time', 'sumdonations', 'randomdraw', 'event', 'winners_', 'provider', 'handler' )
+  list_display = ('name', 'category', 'bidrange', 'games', 'start_draw_time', 'end_draw_time', 'sumdonations',
+                  'randomdraw', 'event', 'state', 'winners_', 'provider', 'handler' )
+  list_editable = ('state',)
   list_filter = ('event', 'category', 'state', PrizeListFilter)
   fieldsets = [
     (None, { 'fields': ['name', 'description', 'shortdescription', 'image', 'altimage', 'event', 'category', 'requiresshipping', 'handler' ] }),
@@ -708,26 +690,26 @@ class PrizeAdmin(CustomModelAdmin):
   def winners_(self, obj):
     winners = obj.get_winners()
     if len(winners) > 0:
-      return reduce(lambda x,y: x + " ; " + y, map(lambda x: unicode(x), winners))
+      return reduce(lambda x,y: x + " ; " + y, [str(x) for x in winners])
     else:
       return 'None'
   def bidrange(self, obj):
-    s = unicode(obj.minimumbid)
+    s = str(obj.minimumbid)
     if obj.minimumbid != obj.maximumbid:
       if obj.maximumbid == None:
-        max = u'Infinite'
+        max = 'Infinite'
       else:
-        max = unicode(obj.maximumbid)
+        max = str(obj.maximumbid)
       s += ' <--> ' + max
     return s
   bidrange.short_description = 'Bid Range'
   def games(self, obj):
     if obj.startrun == None:
-      return u''
+      return ''
     else:
-      s = unicode(obj.startrun.name_with_category())
+      s = str(obj.startrun.name_with_category())
       if obj.startrun != obj.endrun:
-        s += ' <--> ' + unicode(obj.endrun.name_with_category())
+        s += ' <--> ' + str(obj.endrun.name_with_category())
   def draw_prize_internal(self, request, queryset, limit):
     numDrawn = 0
     for prize in queryset:
@@ -833,8 +815,8 @@ def start_run_view(request, run):
     messages.info(request, 'Current start time is %s' % run.starttime)
     return HttpResponseRedirect(reverse('admin:tracker_speedrun_changelist') + '?event=%d' % run.event_id)
   return render(request, 'admin/generic_form.html',
-                dictionary=dict(
-                  title=u'Set start time for %s' % run,
+                context=dict(
+                  title='Set start time for %s' % run,
                   form=form,
                   action=request.path,
                 )
@@ -969,7 +951,7 @@ def show_completed_bids(request):
     for bid in bidList:
       bid.state = 'CLOSED'
       bid.save()
-      logutil.change(request, bid, u'Closed {0}'.format(unicode(bid)))
+      logutil.change(request, bid, 'Closed {0}'.format(str(bid)))
     return render(request, 'admin/completed_bids_post.html', { 'bids': bidList })
   return render(request, 'admin/completed_bids.html', { 'bids': bidList })
 
@@ -1005,7 +987,7 @@ def automail_prize_contributors(request):
     form = forms.AutomailPrizeContributorsForm(prizes=prizes, data=request.POST)
     if form.is_valid():
       prizemail.automail_prize_contributors(currentEvent, form.cleaned_data['prizes'], form.cleaned_data['emailtemplate'], sender=form.cleaned_data['fromaddress'], replyTo=form.cleaned_data['replyaddress'])
-      viewutil.tracker_log(u'prize', u'Mailed prize contributors', event=currentEvent, user=request.user)
+      viewutil.tracker_log('prize', 'Mailed prize contributors', event=currentEvent, user=request.user)
       return render(request, 'admin/automail_prize_contributors_post.html', { 'prizes': form.cleaned_data['prizes'] })
   else:
     form = forms.AutomailPrizeContributorsForm(prizes=prizes)
@@ -1047,7 +1029,7 @@ def automail_prize_winners(request):
         prizeWinner.acceptdeadline = form.cleaned_data['acceptdeadline']
         prizeWinner.save()
       prizemail.automail_prize_winners(currentEvent, form.cleaned_data['prizewinners'], form.cleaned_data['emailtemplate'], sender=form.cleaned_data['fromaddress'], replyTo=form.cleaned_data['replyaddress'])
-      viewutil.tracker_log(u'prize', u'Mailed prize winner notifications', event=currentEvent, user=request.user)
+      viewutil.tracker_log('prize', 'Mailed prize winner notifications', event=currentEvent, user=request.user)
       return render(request, 'admin/automail_prize_winners_post.html', { 'prizewinners': form.cleaned_data['prizewinners'] })
   else:
     form = forms.AutomailPrizeWinnersForm(prizewinners=prizewinners)
@@ -1065,7 +1047,7 @@ def automail_prize_accept_notifications(request):
     form = forms.AutomailPrizeAcceptNotifyForm(prizewinners=prizewinners, data=request.POST)
     if form.is_valid():
       prizemail.automail_winner_accepted_prize(currentEvent, form.cleaned_data['prizewinners'], form.cleaned_data['emailtemplate'], sender=form.cleaned_data['fromaddress'], replyTo=form.cleaned_data['replyaddress'])
-      viewutil.tracker_log(u'prize', u'Mailed prize accept notifications', event=currentEvent, user=request.user)
+      viewutil.tracker_log('prize', 'Mailed prize accept notifications', event=currentEvent, user=request.user)
       return render(request, 'admin/automail_prize_winners_accept_notifications_post.html', { 'prizewinners': form.cleaned_data['prizewinners'] })
   else:
     form = forms.AutomailPrizeAcceptNotifyForm(prizewinners=prizewinners)
@@ -1083,7 +1065,7 @@ def automail_prize_shipping_notifications(request):
     form = forms.AutomailPrizeShippingNotifyForm(prizewinners=prizewinners, data=request.POST)
     if form.is_valid():
       prizemail.automail_shipping_email_notifications(currentEvent, form.cleaned_data['prizewinners'], form.cleaned_data['emailtemplate'], sender=form.cleaned_data['fromaddress'], replyTo=form.cleaned_data['replyaddress'])
-      viewutil.tracker_log(u'prize', u'Mailed prize shipping notifications', event=currentEvent, user=request.user)
+      viewutil.tracker_log('prize', 'Mailed prize shipping notifications', event=currentEvent, user=request.user)
       return render(request, 'admin/automail_prize_winners_shipping_notifications_post.html', { 'prizewinners': form.cleaned_data['prizewinners'] })
   else:
     form = forms.AutomailPrizeShippingNotifyForm(prizewinners=prizewinners)
@@ -1131,26 +1113,26 @@ old_get_urls = admin.site.get_urls
 def get_urls():
   urls = old_get_urls()
   return [
-    url('select_event', select_event, name='select_event'),
-    url('merge_bids', merge_bids_view, name='merge_bids'),
-    url('merge_donors', merge_donors_view, name='merge_donors'),
-    url('start_run/(?P<run>\d+)', start_run_view, name='start_run'),
-    url('automail_prize_contributors', automail_prize_contributors, name='automail_prize_contributors'),
-    url('draw_prize_winners', draw_prize_winners, name='draw_prize_winners'),
-    url('automail_prize_winners', automail_prize_winners, name='automail_prize_winners'),
-    url('automail_prize_accept_notifications', automail_prize_accept_notifications, name='automail_prize_accept_notifications'),
-    url('automail_prize_shipping_notifications', automail_prize_shipping_notifications, name='automail_prize_shipping_notifications'),
-    url('show_completed_bids', show_completed_bids, name='show_completed_bids'),
-    url('process_donations', process_donations, name='process_donations'),
-    url('read_donations', read_donations, name='read_donations'),
-    url('process_prize_submissions', process_prize_submissions, name='process_prize_submissions'),
-    url('process_pending_bids', process_pending_bids, name='process_pending_bids'),
-    url('search_objects', views.search, name='search_objects'),
-    url('edit_object', views.edit, name='edit_object'),
-    url('add_object', views.add, name='add_object'),
-    url('delete_object', views.delete, name='delete_object'),
-    url('google_flow', google_flow, name='google_flow'),
-    url(r'draw_prize/(?P<id>\d+)', views.draw_prize, name='draw_prize'),
+           path('select_event', select_event, name='select_event'),
+           path('merge_bids', merge_bids_view, name='merge_bids'),
+           path('merge_donors', merge_donors_view, name='merge_donors'),
+           path('start_run/<int:run>', start_run_view, name='start_run'),
+           path('automail_prize_contributors', automail_prize_contributors, name='automail_prize_contributors'),
+           path('draw_prize_winners', draw_prize_winners, name='draw_prize_winners'),
+           path('automail_prize_winners', automail_prize_winners, name='automail_prize_winners'),
+           path('automail_prize_accept_notifications', automail_prize_accept_notifications, name='automail_prize_accept_notifications'),
+           path('automail_prize_shipping_notifications', automail_prize_shipping_notifications, name='automail_prize_shipping_notifications'),
+           path('show_completed_bids', show_completed_bids, name='show_completed_bids'),
+           path('process_donations', process_donations, name='process_donations'),
+           path('read_donations', read_donations, name='read_donations'),
+           path('process_prize_submissions', process_prize_submissions, name='process_prize_submissions'),
+           path('process_pending_bids', process_pending_bids, name='process_pending_bids'),
+           path('search_objects', views.search, name='search_objects'),
+           path('edit_object', views.edit, name='edit_object'),
+           path('add_object', views.add, name='add_object'),
+           path('delete_object', views.delete, name='delete_object'),
+           path('google_flow', google_flow, name='google_flow'),
+           path('draw_prize/<int:id>', views.draw_prize, name='draw_prize'),
   ] + urls
 admin.site.get_urls = get_urls
 admin.site.index_template = 'admin/tracker_admin.html'

@@ -15,7 +15,7 @@ def create_ipn(request):
   if form.is_valid():
     try:
       ipnObj = form.save(commit=False)
-    except Exception, e:
+    except Exception as e:
       flag = "Exception while processing. (%s)" % e
   else:
     flag = "Invalid form. (%s)" % form.errors
@@ -31,8 +31,15 @@ def create_ipn(request):
     else:
       donation = get_ipn_donation(ipnObj)
       if not donation:
-        raise Exception('No donation associated with this IPN')
-      ipnObj.verify(None, donation.event.paypalemail)
+        raise Exception('No donation associated with this IPN: Custom field value {!r}'.format(ipnObj.custom))
+      ipnObj.verify()
+
+      # Check if receiver email matches event here.  This removes the need for a custom fork of django-paypal.
+      business = donation.event.paypalemail
+      if (ipnObj.business and ipnObj.business.lower() != business.lower()) or (
+              not ipnObj.business and ipnObj.receiver_email.lower() != business.lower()):
+        ipnObj.set_flag("Business email mismatch. (%s)" % ipnObj.business)
+
   ipnObj.save()
   return ipnObj
 
@@ -77,7 +84,7 @@ def initialize_paypal_donation(ipnObj):
     'visibility'      : 'ANON',
   }
   donor,created = Donor.objects.get_or_create(paypalemail=ipnObj.payer_email.lower(),defaults=defaults)
-  
+
   fill_donor_address(donor, ipnObj)
 
   donation = get_ipn_donation(ipnObj)
@@ -117,10 +124,10 @@ def initialize_paypal_donation(ipnObj):
 
   # if the user attempted to tamper with the donation amount, remove all bids
   if donation.amount != ipnObj.mc_gross:
-    donation.modcomment += u"\n*Tampered donation amount from " + str(donation.amount) + u" to " + str(ipnObj.mc_gross) + u", removed all bids*"
+    donation.modcomment += "\n*Tampered donation amount from " + str(donation.amount) + " to " + str(ipnObj.mc_gross) + ", removed all bids*"
     donation.amount = ipnObj.mc_gross
     donation.bids.clear()
-    viewutil.tracker_log('paypal', 'Tampered amount detected in donation {0} (${1} -> ${2})'.format(donation.id, donation.amount, ipnObj.mc_gross), event=donation.event) 
+    viewutil.tracker_log('paypal', 'Tampered amount detected in donation {0} (${1} -> ${2})'.format(donation.id, donation.amount, ipnObj.mc_gross), event=donation.event)
 
   paymentStatus = ipnObj.payment_status.lower()
 

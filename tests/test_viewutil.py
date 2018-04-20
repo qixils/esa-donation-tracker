@@ -21,7 +21,7 @@ class TestParseValue(TransactionTestCase):
         self.assertEqual(parse_value(models.SpeedRun, 'event', self.event.pk), self.event)
 
     def test_single_pk_as_string_fetch(self):
-        self.assertEqual(parse_value(models.SpeedRun, 'event', unicode(self.event.pk)), self.event)
+        self.assertEqual(parse_value(models.SpeedRun, 'event', str(self.event.pk)), self.event)
 
     def test_single_natural_key_as_string_fetch(self):
         self.assertEqual(parse_value(models.SpeedRun, 'event', self.event.short), self.event)
@@ -47,12 +47,12 @@ class TestParseValue(TransactionTestCase):
 
     def test_m2m_pk_csv_fetch(self):
         expected_runners = [self.runner1, self.runner2]
-        runners = parse_value(models.SpeedRun, 'runners', u','.join(unicode(r.pk) for r in expected_runners))
+        runners = parse_value(models.SpeedRun, 'runners', ','.join(str(r.pk) for r in expected_runners))
         self.assertItemsEqual(runners, expected_runners)
 
     def test_m2m_pk_csv_bad_fetch(self):
         with self.assertRaises(models.Runner.DoesNotExist):
-            parse_value(models.SpeedRun, 'runners', u'1001,1002')
+            parse_value(models.SpeedRun, 'runners', '1001,1002')
 
     def test_m2m_pk_json_fetch(self):
         expected_runners = [self.runner1, self.runner2]
@@ -61,16 +61,16 @@ class TestParseValue(TransactionTestCase):
 
     def test_m2m_pk_json_bad_fetch(self):
         with self.assertRaises(models.Runner.DoesNotExist):
-            parse_value(models.SpeedRun, 'runners', u'[1001,1002]')
+            parse_value(models.SpeedRun, 'runners', '[1001,1002]')
 
     def test_m2m_natural_key_csv_fetch(self):
         expected_runners = [self.runner1, self.runner2]
-        runners = parse_value(models.SpeedRun, 'runners', u','.join(r.name for r in expected_runners))
+        runners = parse_value(models.SpeedRun, 'runners', ','.join(r.name for r in expected_runners))
         self.assertItemsEqual(runners, expected_runners)
 
     def test_m2m_natural_key_csv_bad_fetch(self):
         with self.assertRaises(models.Runner.DoesNotExist):
-            parse_value(models.SpeedRun, 'runners', u'total,nonsense')
+            parse_value(models.SpeedRun, 'runners', 'total,nonsense')
 
     def test_m2m_natural_key_flat_json_fetch(self):
         expected_runners = [self.runner1, self.runner2]
@@ -79,7 +79,7 @@ class TestParseValue(TransactionTestCase):
 
     def test_m2m_natural_key_flat_json_bad_fetch(self):
         with self.assertRaises(models.Runner.DoesNotExist):
-            parse_value(models.SpeedRun, 'runners', u'["total","nonsense"]')
+            parse_value(models.SpeedRun, 'runners', '["total","nonsense"]')
 
     def test_m2m_natural_key_full_json_fetch(self):
         expected_runners = [self.runner1, self.runner2]
@@ -88,4 +88,4 @@ class TestParseValue(TransactionTestCase):
 
     def test_m2m_natural_key_full_json_bad_fetch(self):
         with self.assertRaises(models.Runner.DoesNotExist):
-            parse_value(models.SpeedRun, 'runners', u'[["total"],["nonsense"]]')
+            parse_value(models.SpeedRun, 'runners', '[["total"],["nonsense"]]')

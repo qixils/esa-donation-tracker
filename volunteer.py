@@ -1,23 +1,13 @@
 import csv
 
-from django.core.urlresolvers import reverse
 from django.contrib.auth import *
 from django.contrib.auth.models import *
-from django.utils.safestring import mark_safe
 from django.contrib.auth.tokens import default_token_generator
-from django.utils.encoding import force_bytes
-from django.utils.http import urlsafe_base64_encode
 from django.db import transaction
+from django.urls import reverse
 
-import post_office.mail
-import post_office.models
-
-import settings
-
-from tracker.models import *
-from tracker import viewutil
 from tracker import auth
-from tracker import mailutil
+from tracker import viewutil
 
 AuthUser = get_user_model()
 
@@ -34,7 +24,7 @@ class VolunteerInfo:
         self.email = email
         self.isHead = is_head
 
-        
+
 def parse_header_row(row):
     mapping = {}
     columnIndex = 0
@@ -44,8 +34,8 @@ def parse_header_row(row):
             mapping[column] = columnIndex
         columnIndex += 1
     return mapping
-    
-    
+
+
 def parse_volunteer_row(row, mapping):
     position = row[mapping['position']].strip().lower()
     if 'head' in position:
@@ -56,7 +46,7 @@ def parse_volunteer_row(row, mapping):
     username = row[mapping['username']].strip()
     email = row[mapping['email']].strip()
     return VolunteerInfo(firstname=firstname, lastname=lastname, username=username, email=email, is_head=isHead)
-    
+
 
 def parse_volunteer_info_file(csvFilename):
     csvFile = open(csvFilename, 'r')
@@ -105,7 +95,8 @@ def send_volunteer_mail(domain, event, volunteers, template, sender=None, token_
                     registration_url=domain + reverse('tracker:register'))
 
                 if verbosity > 0:
-                    print("Sending email to {0}, active = {1}, head = {2}".format(volunteer.username, user.is_active, volunteer.isHead))
+                    print("Sending email to {0}, active = {1}, head = {2}".format(
+                        volunteer.username, user.is_active, volunteer.isHead))
 
                 if not dry_run:
                     auth.send_registration_mail(domain, user, template, sender, token_generator, extra_context=context)

@@ -1,7 +1,7 @@
 from ajax_select import LookupChannel
+from django.urls import reverse
 from django.utils.html import escape
 from django.db.models import Q
-from django.core.urlresolvers import reverse
 from django.utils.safestring import mark_safe
 from django.contrib.auth import get_user_model
 
@@ -23,34 +23,34 @@ class UserLookup(LookupChannel):
     def __init__(self, *args, **kwargs):
         self.model = get_user_model()
         super(UserLookup,self).__init__(*args, **kwargs)
-    
+
     def get_query(self, q, request):
         return self.model.objects.filter(username__icontains=q)
-        
+
     def get_result(self, obj):
         return obj.username
-    
+
     def format_match(self,obj):
         return escape(obj.username)
-    
+
     def can_add(self, user, source_model):
         # avoid in-line addition of users by accident
         return False
-        
+
 class CountryLookup(LookupChannel):
     def __init__(self, *args, **kwargs):
         self.model = Country
         super(CountryLookup,self).__init__(*args, **kwargs)
-        
+
     def get_query(self, q, request):
         return Country.objects.filter(name__icontains=q)
-        
+
     def get_result(self,obj):
-        return unicode(obj)
-        
+        return str(obj)
+
     def format_match(self,obj):
-        return escape(unicode(obj))
-    
+        return escape(str(obj))
+
     def can_add(self, user, source_model):
         # Presumably, we don't want to add countries typically
         return False
@@ -64,12 +64,12 @@ class CountryRegionLookup(LookupChannel):
         return CountryRegion.objects.filter(Q(name__icontains=q)|Q(country__name__icontains=q))
 
     def get_result(self, obj):
-        return unicode(obj)
+        return str(obj)
 
     def format_match(self, obj):
-        return escape(unicode(obj))
+        return escape(str(obj))
 
-        
+
 class GenericLookup(LookupChannel):
   def get_query(self,q,request):
     params = {'q': q}
@@ -84,17 +84,17 @@ class GenericLookup(LookupChannel):
     return filters.run_model_query(model, params, user=request.user, mode='admin')
 
   def get_result(self,obj):
-    return unicode(obj)
-    
+    return str(obj)
+
   def format_match(self,obj):
-    return escape(unicode(obj))
+    return escape(str(obj))
 
   # returning the admin URL reduces the genericity of our solution a little bit, but this can be solved
   # by using distinct lookups for admin/non-admin applications (which we should do regardless since
   # non-admin search should be different)
   def format_item_display(self,obj):
-    result = u'<a href="{0}">{1}</a>'.format(reverse('admin:tracker_{0}_change'.format(obj._meta.model_name),args=[obj.pk]), escape(unicode(obj)))
-    return mark_safe(result);
+    result = '<a href="{0}">{1}</a>'.format(reverse('admin:tracker_{0}_change'.format(obj._meta.model_name),args=[obj.pk]), escape(str(obj)))
+    return mark_safe(result)
 
 class BidLookup(GenericLookup):
   def __init__(self, *args, **kwargs):
@@ -103,7 +103,7 @@ class BidLookup(GenericLookup):
     self.useEvent = True
     self.useLock = True
     super(BidLookup,self).__init__(*args, **kwargs)
-    
+
 class AllBidLookup(GenericLookup):
   def __init__(self, *args, **kwargs):
     self.model = Bid

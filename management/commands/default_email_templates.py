@@ -54,7 +54,7 @@ class Command(commandutil.TrackerCommand):
         self.prefix = options['prefix']
 
         if options['list']:
-            for option in _defaultTemplates.keys():
+            for option in list(_defaultTemplates.keys()):
                 self.message(option, 0)
             return
  
@@ -62,9 +62,9 @@ class Command(commandutil.TrackerCommand):
             self.templates = options['create']
 
         if options['create_all']:
-            self.templates = list(map(email_template_name, _defaultTemplates.keys()))
+            self.templates = list(map(email_template_name, list(_defaultTemplates.keys())))
 
-        self.templates = list(map(lambda x: (x[0], x[1] or (options['prefix'] + x[0].name)), self.templates))
+        self.templates = list([(x[0], x[1] or (options['prefix'] + x[0].name)) for x in self.templates])
 
         self.check_validity(self.templates, options['force'])
 

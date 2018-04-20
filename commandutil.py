@@ -3,15 +3,16 @@ from django.core.management.base import BaseCommand, CommandError
 class TrackerCommand(BaseCommand):
     requires_system_checks = False
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.verbosity = 0
-    
+
     def message(self, message, verbosity_level=1):
         if self.verbosity >= verbosity_level:
-            if isinstance(message, unicode):
+            if isinstance(message, str):
                 message = message.encode('utf-8')
             print(message)
-            
+
     def handle(self, *args, **options):
         if 'verbosity' in options:
             self.verbosity = options['verbosity']

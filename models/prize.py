@@ -5,9 +5,9 @@ import datetime
 
 from django.db import models
 from django.core.exceptions import ValidationError
-from django.core.urlresolvers import reverse
 from django.db.models import Sum, Q
 from django.contrib.auth.models import User
+from django.urls import reverse
 
 from ..validators import *
 from .event import LatestEvent, TimestampField
@@ -55,7 +55,8 @@ class Prize(models.Model):
   maxwinners = models.IntegerField(default=1, verbose_name='Max Winners', validators=[positive, nonzero], blank=False, null=False)
   maxmultiwin = models.IntegerField(default=1, verbose_name='Max Wins per Donor', validators=[positive, nonzero], blank=False, null=False)
   provider = models.CharField(max_length=64, blank=True, help_text='Name of the person who provided the prize to the event')
-  handler = models.ForeignKey(USER_MODEL_NAME, null=True, help_text='User account responsible for prize shipping')
+  handler = models.ForeignKey(USER_MODEL_NAME, null=True, help_text='User account responsible for prize shipping',
+                              on_delete=models.PROTECT)
   acceptemailsent = models.BooleanField(default=False, verbose_name='Accept/Deny Email Sent')
   creator = models.CharField(max_length=64, blank=True, null=True, verbose_name='Creator')
   creatoremail = models.EmailField(max_length=128, blank=True, null=True, verbose_name='Creator Email')
@@ -75,8 +76,8 @@ class Prize(models.Model):
   def natural_key(self):
     return (self.name, self.event.natural_key())
 
-  def __unicode__(self):
-    return unicode(self.name)
+  def __str__(self):
+    return str(self.name)
 
   def clean(self, winner=None):
     if self.maxmultiwin > 1 and self.category != None:
@@ -124,7 +125,7 @@ class Prize(models.Model):
         donationSet = donationSet.exclude(donor__addresscountry=region.country, donor__addressstate__iexact=region.name)
 
     fullDonors = PrizeWinner.objects.filter(prize=self,sumcount=self.maxmultiwin)
-    donationSet = donationSet.exclude(donor__in=map(lambda x: x.winner, fullDonors))
+    donationSet = donationSet.exclude(donor__in=[x.winner for x in fullDonors])
     if self.ticketdraw:
       donationSet = donationSet.filter(tickets__prize=self)
     elif self.has_draw_time():
@@ -142,7 +143,7 @@ class Prize(models.Model):
           donors[donation.donor] = max(donation.prize_ticket_amount(self),donors.get(donation.donor,Decimal('0.0')))
         else:
           donors[donation.donor] = max(donation.amount,donors.get(donation.donor,Decimal('0.0')))
-    directEntries = DonorPrizeEntry.objects.filter(prize=self).exclude(Q(donor__in=map(lambda x: x.winner, fullDonors)))
+    directEntries = DonorPrizeEntry.objects.filter(prize=self).exclude(Q(donor__in=[x.winner for x in fullDonors]))
     for entry in directEntries:
       donors.setdefault(entry.donor, Decimal('0.0'))
       donors[entry.donor] = max(entry.weight*self.minimumbid, donors[entry.donor])
@@ -155,9 +156,9 @@ class Prize(models.Model):
         if a < mn: return 0.0
         if mx != None and a > mx: return float(mx/mn)
         return float(a/mn)
-      return sorted(filter(lambda d: d['weight'] >= 1.0,map(lambda d: {'donor':d[0].id,'amount':d[1],'weight':weight(self.minimumbid,self.maximumbid,d[1])}, donors.items())),key=lambda d: d['donor'])
+      return sorted([d for d in [{'donor':d[0].id,'amount':d[1],'weight':weight(self.minimumbid,self.maximumbid,d[1])} for d in list(donors.items())] if d['weight'] >= 1.0],key=lambda d: d['donor'])
     else:
-      m = max(donors.items(), key=lambda d: d[1])
+      m = max(list(donors.items()), key=lambda d: d[1])
       return [{'donor':m[0].id,'amount':m[1],'weight':1.0}]
 
   def is_donor_allowed_to_receive(self, donor):
@@ -225,7 +226,7 @@ class Prize(models.Model):
     return not self.has_draw_time() or (self.start_draw_time() <= time <= self.end_draw_time())
 
   def current_win_count(self):
-    return sum(filter(lambda x: x != None, self.get_prize_winners().aggregate(Sum('pendingcount'),Sum('acceptcount')).values()))
+    return sum([x for x in list(self.get_prize_winners().aggregate(Sum('pendingcount'),Sum('acceptcount')).values()) if x != None])
 
   def maxed_winners(self):
     return self.current_win_count() == self.maxwinners
@@ -256,7 +257,7 @@ class Prize(models.Model):
       raise Exception("Cannot get single winner for multi-winner prize")
 
   def get_winners(self):
-    return list(map(lambda x: x.winner, self.get_prize_winners()))
+    return list([x.winner for x in self.get_prize_winners()])
 
   def get_winner(self):
     prizeWinner = self.get_prize_winner()
@@ -281,8 +282,8 @@ class PrizeTicket(models.Model):
       raise ValidationError('Cannot assign tickets to non-ticket prize')
     self.donation.clean(self)
 
-  def __unicode__(self):
-    return unicode(self.prize) + ' -- ' + unicode(self.donation)
+  def __str__(self):
+    return str(self.prize) + ' -- ' + str(self.donation)
 
 
 class PrizeWinner(models.Model):
@@ -366,8 +367,8 @@ class PrizeWinner(models.Model):
     self.sumcount = self.pendingcount + self.acceptcount + self.declinecount
     super(PrizeWinner, self).save(*args, **kwargs)
 
-  def __unicode__(self):
-    return unicode(self.prize) + u' -- ' + unicode(self.winner)
+  def __str__(self):
+    return str(self.prize) + ' -- ' + str(self.winner)
 
 
 class PrizeCategoryManager(models.Manager):
@@ -389,7 +390,7 @@ class PrizeCategory(models.Model):
   def natural_key(self):
     return (self.name,)
 
-  def __unicode__(self):
+  def __str__(self):
     return self.name
 
 
@@ -404,6 +405,6 @@ class DonorPrizeEntry(models.Model):
     verbose_name_plural = 'Donor Prize Entries'
     unique_together = ('prize','donor',)
 
-  def __unicode__(self):
-    return unicode(self.donor) + ' entered to win ' + unicode(self.prize)
+  def __str__(self):
+    return str(self.donor) + ' entered to win ' + str(self.prize)
 

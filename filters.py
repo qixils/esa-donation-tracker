@@ -1,9 +1,10 @@
-from django.db.models import Count,Sum,Max,Avg,Q,F
-from tracker.models import *
 from datetime import *
-import pytz
-import viewutil
+
 import dateutil.parser
+import pytz
+from django.db.models import Q, F
+
+from tracker.models import *
 
 # TODO: fix these to make more sense, it should in general only be querying top-level bids
 
@@ -32,7 +33,7 @@ _ModelDefaultQuery = {
   'bid'           : Q(level=0),
 }
 
-_ModelReverseMap = dict([(v,k) for k,v in _ModelMap.items()])
+_ModelReverseMap = dict([(v,k) for k,v in list(_ModelMap.items())])
 
 _GeneralFields = {
   # There was a really weird bug when doing the full recursion on speedrun, where it would double-select the related bids in aggregate queries
@@ -391,12 +392,12 @@ def model_specific_filter(model, searchDict, user=None):
       # this isn't possible in the current url method, but it could be in the future if we had a way to encode lists (possibly by escaping commas in normal strings)
       values = searchDict[key]
       fieldQuery = Q()
-      if isinstance(values, basestring) or not hasattr(values, '__iter__'):
+      if isinstance(values, str) or not hasattr(values, '__iter__'):
         values = [values]
       for value in values:
         # allows modelspecific to be a single key, or multiple values
         modelSpecific = modelSpecifics[key]
-        if isinstance(modelSpecific, basestring) or not hasattr(modelSpecific, '__iter__'):
+        if isinstance(modelSpecific, str) or not hasattr(modelSpecific, '__iter__'):
           modelSpecific = [modelSpecific]
         for searchKey in modelSpecific:
           fieldQuery |= Q( **{ searchKey: value })
@@ -405,7 +406,7 @@ def model_specific_filter(model, searchDict, user=None):
   return query
 
 def canonical_bool(b):
-  if isinstance(b, basestring):
+  if isinstance(b, str):
     if b.lower() in ['t', 'True', 'true', 'y', 'yes']:
       b = True
     elif b.lower() in ['f', 'False', 'false', 'n', 'no']:
@@ -417,7 +418,7 @@ def canonical_bool(b):
 def default_time(time):
   if time is None:
     time = datetime.utcnow()
-  elif isinstance(time, basestring):
+  elif isinstance(time, str):
     time = dateutil.parser.parse(time)
   return time.replace(tzinfo=pytz.utc)
 
@@ -472,7 +473,7 @@ def get_future_runs(**kwargs):
   return get_upcomming_runs(includeCurrent=False, **kwargs)
 
 def upcomming_bid_filter(**kwargs):
-  runs = map(lambda run: run.id, get_upcomming_runs(SpeedRun.objects.filter(Q(bids__state='OPENED')).distinct(), **kwargs))
+  runs = [run.id for run in get_upcomming_runs(SpeedRun.objects.filter(Q(bids__state='OPENED')).distinct(), **kwargs)]
   return Q(speedrun__in=runs)
 
 def get_upcomming_bids(**kwargs):
