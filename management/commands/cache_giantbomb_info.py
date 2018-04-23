@@ -5,7 +5,6 @@ import urllib.request, urllib.parse, urllib.error
 import urllib.request, urllib.error, urllib.parse
 import datetime
 import dateutil.parser
-import readline
 import re
 import math
 
@@ -23,12 +22,12 @@ _settingsKey = 'GIANTBOMB_API_KEY'
 
 class Command(commandutil.TrackerCommand):
     help = "(re-)cache a run's information w.r.t. the GiantBomb games database"
-    
+
     def __init__(self):
         super(Command, self).__init__()
         self.compiledCleaningExpression = re.compile('race|all bosses|\\w+%|\\w+ %')
         self.foundAmbigiousSearched = False
-        
+
     def add_arguments(self, parser):
         parser.add_argument('-k', '--api-key', help='specify the api key to use (You can also set "{0}" in settings.py)'.format(_settingsKey), required=False, default=None)
         parser.add_argument('-t', '--throttle-rate', help='Number of seconds to put between requests. The default (non-paid) giantbomb api throttle is supposedly 200 requests per resrouce per hour.', default=(60.0*60.0)/200.0, required=False)
@@ -43,7 +42,7 @@ class Command(commandutil.TrackerCommand):
         idGroup.add_argument('-g', '--ignore-id', help='Ignore the id on runs (helpful if an id was set incorrectly', action='store_true', default=False, required=False)
         parser.add_argument('-i', '--interactive', help='Run in interactive mode. Should be used with -s to avoid redundant queries', action='store_true', default=False, required=False)
         parser.add_argument('-l', '--limit', help='Specify the maximum number of runs to return in a search query', default=100, type=int, required=False)
-        
+
     def clean_game_name(self, name):
         return self.compiledCleaningExpression.sub('', name)
 
@@ -69,7 +68,7 @@ class Command(commandutil.TrackerCommand):
 
     def process_query(self, run, searchResult):
         parsed = self.parse_query_results(searchResult)
-        
+
         if run.name != parsed['name']:
             self.message("Setting run {0} name to {1}".format(run.name, parsed['name']), 2)
             if self.compiledCleaningExpression.search(run.name):
@@ -84,7 +83,7 @@ class Command(commandutil.TrackerCommand):
         if run.giantbomb_id != parsed['giantbomb_id']:
             self.message("Setting run {0} giantbomb_id to {1}".format(run.name, parsed['giantbomb_id']), 2)
             run.giantbomb_id = parsed['giantbomb_id']
-        
+
         if parsed['release_year'] == None:
             if self.interactive:
                 self.message("No release date found for {0}".format(run.name), 0)
@@ -135,10 +134,10 @@ class Command(commandutil.TrackerCommand):
             platform = parsed['platforms'][0]
             if run.console != platform:
                 self.message("Setting console for {0} to {1}".format(run.name, platform), 0)
-                run.console = platform 
-            
+                run.console = platform
+
         run.save()
-        
+
     def filter_none_dates(self, entries):
         return list([entry for entry in entries if self.parse_query_results(entry)['release_year'] != None])
 
@@ -155,12 +154,12 @@ class Command(commandutil.TrackerCommand):
         # If we find any exact matches, prefer those over any potential matches
         if len(exactMatches) > 0:
             potentialMatches = exactMatches
-        
+
         # If we find any matches with release dates, prefer those over any matches without release dates
         filterNoDate = self.filter_none_dates(potentialMatches)
         if len(filterNoDate) > 0:
             potentialMatches = filterNoDate
-        
+
         if len(potentialMatches) == 0:
             self.message("No matches found for {0}".format(cleanedRunName))
         elif len(potentialMatches) > 1:
@@ -196,29 +195,29 @@ class Command(commandutil.TrackerCommand):
         else:
             self.message("Error: {0}".format(data['error']))
             return False
-    
+
     def handle(self, *args, **options):
         super(Command, self).handle(*args, **options)
 
         self.message(str(options),3)
-    
+
         self.apiKey = options['api_key']
         if options['api_key'] == None:
             self.apiKey = getattr(settings, _settingsKey, None)
-    
+
         if not self.apiKey:
             raise CommandError("No API key was supplied, and {0} was not set in settings.py, cannot continue.".format(_settingsKey))
 
         filterRegex = None
         if options['filter']:
             filterRegex = re.compile(options['filter'], re.IGNORECASE)
-        
+
         excludeRegex = None
         if options['exclude']:
             excludeRegex = re.compile(options['exclude'], re.IGNORECASE)
-        
+
         runlist = models.SpeedRun.objects.all()
-        
+
         if options['event'] != None:
             try:
                 event = viewutil.get_event(options['event'])
@@ -227,7 +226,7 @@ class Command(commandutil.TrackerCommand):
             runlist = runlist.filter(event=event)
         elif options['run'] != None:
             runlist = runlist.filter(id=int(options['run']))
-        
+
         self.queryLimit = options['limit']
         throttleFloat = float(options['throttle_rate'])
         throttleSeconds = int(options['throttle_rate'])
@@ -236,9 +235,9 @@ class Command(commandutil.TrackerCommand):
         self.ignoreId = options['ignore_id']
         self.interactive = options['interactive']
         self.skipWithId = options['skip_with_id']
-        
+
         lastApiCallTime = datetime.datetime.min
-        
+
         for run in runlist:
             if (not filterRegex or filterRegex.match(run.name)) and (not excludeRegex or not excludeRegex.match(run.name)):
                 nextAPICallTime = lastApiCallTime + throttleRate
@@ -255,7 +254,7 @@ class Command(commandutil.TrackerCommand):
                         self.message("(url={0})".format(queryUrl), 2)
                         data = json.loads(urllib.request.urlopen(queryUrl).read())
                         lastApiCallTime = datetime.datetime.now()
-                        
+
                         if self.response_good(data):
                             self.process_query(run, data['results'])
                     else:
@@ -271,15 +270,15 @@ class Command(commandutil.TrackerCommand):
                     self.message("(url={0})".format(searchUrl), 2)
                     data = json.loads(urllib.request.urlopen(searchUrl).read())
                     lastApiCallTime = datetime.datetime.now()
-                    
+
                     if self.response_good(data):
                         self.process_search(run, cleanedName, data['results'])
             else:
                 self.message('Run {0} does not match filters.'.format(run.name), 2)
-        
+
         if self.foundAmbigiousSearched:
             self.message("\nOne or more objects could not be synced due to ambiguous run names. Re-run the command with options -is to resolve these interactively")
             self.message("(be sure to also set --throttle-rate=0 to preserve your sanity!)")
-        
+
         self.message("\nDone.")
 
