@@ -225,6 +225,7 @@ class BidAdmin(CustomModelAdmin):
   form = BidForm
   list_display = ('name', 'parentlong', 'istarget', 'goal', 'total', 'description', 'state', 'biddependency')
   list_display_links = ('parentlong', 'biddependency')
+  list_select_related = ('event', 'speedrun', 'parent')
   search_fields = ('name', 'speedrun__name', 'description', 'shortdescription', 'parent__name')
   list_filter = ('speedrun__event', 'state', 'istarget', BidParentFilter, BidListFilter)
   readonly_fields = ('parent', 'parent_', 'total')
@@ -302,6 +303,7 @@ class BidSuggestionForm(djforms.ModelForm):
 class BidSuggestionAdmin(CustomModelAdmin):
   form = BidSuggestionForm
   list_display = ('name', 'bid')
+  list_select_related = ('bid',)
   search_fields = ('name', 'bid__name', 'bid__description')
   list_filter = ('bid__state', 'bid__speedrun__event', 'bid__event', BidSuggestionListFilter)
   def get_queryset(self, request):
@@ -327,6 +329,7 @@ class DonationBidInline(CustomStackedInline):
 class DonationBidAdmin(CustomModelAdmin):
   form = DonationBidForm
   list_display = ('bid', 'donation', 'amount')
+  list_select_related = ('bid', 'donation')
   def get_queryset(self, request):
     event = viewutil.get_selected_event(request)
     params = {}
@@ -489,6 +492,7 @@ class PrizeWinnerAdmin(CustomModelAdmin):
   search_fields = ['prize__name', 'winner__email']
   list_display = ['__str__', 'prize', 'winner', 'pendingcount', 'acceptcount', 'declinecount', 'accept_url']
   list_editable = ('pendingcount', 'acceptcount', 'declinecount')
+  list_select_related = ('prize', 'prize__event', 'prize__startrun', 'winner')
   readonly_fields = ['winner_email', 'accept_url', 'winner_address']
   fieldsets = [
     (None, { 'fields': ['prize', 'winner', 'winner_email', 'emailsent', 'pendingcount', 'acceptcount', 'declinecount', 'acceptdeadline', 'accept_url'], }),
@@ -572,6 +576,7 @@ class DonorPrizeEntryAdmin(CustomModelAdmin):
   search_fields = ['prize__name', 'donor__email', 'donor__alias', 'donor__firstname', 'donor__lastname']
   list_display = ['prize', 'donor', 'weight']
   list_filter = ['prize__event', 'prize', 'donor']
+  list_select_related = ('prize', 'prize__event', 'prize__startrun', 'donor')
   fieldsets = [
     (None, {'fields': ['donor', 'prize', 'weight']}),
   ]
@@ -806,6 +811,7 @@ class PrizeAdmin(CustomModelAdmin):
                   'randomdraw', 'event', 'state', 'winners_', 'provider', 'handler' )
   list_editable = ('state',)
   list_filter = ('event', 'category', 'state', PrizeListFilter)
+  list_select_related = ('event', 'startrun', 'endrun')
   fieldsets = [
     (None, { 'fields': ['name', 'description', 'shortdescription', 'image', 'altimage', 'event', 'category', 'requiresshipping', 'handler' ] }),
     ('Contributor Information', {
@@ -908,6 +914,7 @@ class PrizeTicketForm(djforms.ModelForm):
 class PrizeTicketAdmin(CustomModelAdmin):
   form = PrizeTicketForm
   list_display = ('prize', 'donation', 'amount')
+  list_select_related = ('prize', 'donation')
   def get_queryset(self, request):
     event = viewutil.get_selected_event(request)
     params = {}
@@ -927,6 +934,7 @@ class RunnerAdmin(CustomModelAdmin):
   form = RunnerAdminForm
   search_fields = ['name', 'stream', 'twitter', 'youtube', 'donor__alias', 'donor__firstname', 'donor__lastname', 'donor__email',]
   list_display = ('name', 'stream', 'twitter', 'youtube', 'donor',)
+  list_select_related = ('donor',)
   fieldsets = [(None, { 'fields': ('name', 'stream', 'twitter', 'youtube', 'donor',) }),]
 
 class SpeedRunAdminForm(djforms.ModelForm):
@@ -974,6 +982,7 @@ class SpeedRunAdmin(CustomModelAdmin):
   list_filter = ['event', RunListFilter]
   inlines = [BidInline,PrizeInline]
   list_display = ('name', 'category', 'description', 'deprecated_runners', 'starttime', 'run_time', 'setup_time')
+  list_select_related = ('event',)
   fieldsets = [(None, { 'fields': ('name', 'display_name', 'category', 'console', 'release_year', 'description', 'event', 'starttime', 'run_time', 'setup_time', 'deprecated_runners', 'runners', 'coop', 'tech_notes',) }),]
   readonly_fields = ('deprecated_runners', 'starttime')
   actions = ['start_run']
@@ -996,6 +1005,9 @@ class SpeedRunAdmin(CustomModelAdmin):
     if event:
       params['event'] = event.id
     return filters.run_model_query('run', params, user=request.user, mode='admin')
+
+class SubmissionAdmin(CustomModelAdmin):
+  list_select_related = ('run', 'run__event')
 
 class LogAdminForm(djforms.ModelForm):
   event = make_ajax_field(tracker.models.Log, 'event', 'event', initial=latest_event_id)
@@ -1242,7 +1254,7 @@ admin.site.register(tracker.models.Event, EventAdmin)
 admin.site.register(tracker.models.SpeedRun, SpeedRunAdmin)
 admin.site.register(tracker.models.Runner, RunnerAdmin)
 admin.site.register(tracker.models.PostbackURL, PostbackURLAdmin)
-admin.site.register(tracker.models.Submission)
+admin.site.register(tracker.models.Submission, SubmissionAdmin)
 admin.site.register(tracker.models.Prize, PrizeAdmin)
 admin.site.register(tracker.models.PrizeTicket, PrizeTicketAdmin)
 admin.site.register(tracker.models.PrizeCategory)
