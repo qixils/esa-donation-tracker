@@ -8,6 +8,7 @@ import locale
 import urllib.request, urllib.parse, urllib.error
 
 import tracker.viewutil as viewutil
+from tracker.models import Donor
 
 register = template.Library()
 
@@ -111,7 +112,11 @@ class DateTimeNode(template.Node):
     self.date = template.Variable(date)
   def render(self, context):
     date = self.date.resolve(context)
-    return '<span class="datetime">' + date.strftime('%m/%d/%Y %H:%M:%S') + ' +0000</span>'
+    if date:
+      date_str = date.strftime('%m/%d/%Y %H:%M:%S') + ' +0000'
+    else:
+      date_str = ""
+    return '<span class="datetime">' + date_str + '</span>'
 
 @register.tag("rendertime")
 def do_rendertime(parser, token):
@@ -142,10 +147,10 @@ def do_bid(bid):
 
 @register.simple_tag(takes_context=True, name='donor_link')
 def donor_link(context, donor, event=None):
-  if donor.visibility != 'ANON':
+  if donor and donor.visibility != 'ANON':
     return format_html('<a href="{url}">{name}</a>', url=donor.get_absolute_url(event), name=donor.visible_name())
   else:
-    return donor.ANONYMOUS
+    return Donor.ANONYMOUS
 
 
 @register.filter
@@ -219,8 +224,13 @@ def standardform(context, form, formid="formid", submittext='Submit', action=Non
     return template.loader.render_to_string('standardform.html', { 'form': form, 'formid': formid, 'submittext': submittext, action: action, 'csrf_token': context.get('csrf_token', None), 'showrequired': showrequired })
 
 @register.simple_tag(takes_context=True)
-def form_innards(context, form, showrequired=True):
-    return template.loader.render_to_string('form_innards.html', { 'form': form, 'showrequired': showrequired, 'csrf_token': context.get('csrf_token', None)})
+def form_innards(context, form, showrequired=True, use_bootstrap=False):
+    return template.loader.render_to_string('form_innards.html', {
+      'form': form,
+      'showrequired': showrequired,
+      'use_bootstrap': use_bootstrap,
+      'csrf_token': context.get('csrf_token', None),
+    })
 
 @register.simple_tag
 def address(donor):
