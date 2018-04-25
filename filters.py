@@ -2,7 +2,7 @@ from datetime import *
 
 import dateutil.parser
 import pytz
-from django.db.models import Q, F
+from django.db.models import Q, F, Sum
 
 from tracker.models import *
 
@@ -509,7 +509,7 @@ def future_prizes_filter(**kwargs):
 
 def todraw_prizes_filter(queryOffset=None):
   offset = default_time(queryOffset)
-  return Q(state='ACCEPTED') & (Q(prizewinner__isnull=True) & (Q(endrun__endtime__lte=offset) | Q(endtime__lte=offset) | (Q(endtime=None) & Q(endrun=None))))
+  return Q(state='ACCEPTED') & (Q(endrun__endtime__lte=offset) | Q(endtime__lte=offset) | (Q(endtime=None) & Q(endrun=None)))
 
 def run_model_query(model, params={}, user=None, mode='user'):
   model = normalize_model_param(model)
@@ -665,7 +665,10 @@ def apply_feed_filter(query, model, feedName, params, user=None, noslice=False):
     elif feedName == 'unwon':
       query = query.filter(Q(prizewinner__isnull=True))
     elif feedName == 'todraw':
-      query = query.filter(todraw_prizes_filter())
+      # Filter based on draw time and check total drawn still less than max winners.
+      query = query.filter(todraw_prizes_filter()).annotate(
+        numdrawn=Sum('prizewinner__pendingcount') + Sum('prizewinner__acceptcount')).filter(
+        numdrawn__lt=F('maxwinners'))
   elif model == 'bidsuggestion':
     if feedName == 'expired':
       query = query.filter(bid__state='CLOSED')
