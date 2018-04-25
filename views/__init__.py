@@ -16,6 +16,9 @@ from tracker.views.user import *
 from tracker.views.commands import __all__ as all_command_views
 from tracker.views.commands import *
 
+from tracker.views.eventviews import __all__ as all_event_views
+from tracker.views.eventviews import *
 
-__all__ = all_auth_views + all_public_views + all_api_views + all_donate_views + all_user_views + all_command_views
+
+__all__ = all_auth_views + all_public_views + all_api_views + all_donate_views + all_user_views + all_command_views + all_event_views
 
