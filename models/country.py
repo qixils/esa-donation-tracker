@@ -29,8 +29,9 @@ class Country(models.Model):
 
     class Meta:
         app_label = 'tracker'
-        verbose_name_plural = 'countries'
-        ordering = ('alpha2',)
+        verbose_name = 'Country'
+        verbose_name_plural = 'Countries'
+        ordering = ('name', 'alpha2',)
 
 
 class CountryRegionManager(models.Manager):
@@ -50,7 +51,8 @@ class CountryRegion(models.Model):
 
     class Meta:
         app_label = 'tracker'
-        verbose_name = 'country region'
+        verbose_name = 'Country Region'
+        verbose_name_plural = 'Country Regions'
         unique_together = ('name','country')
         ordering = ('country','name')
 
