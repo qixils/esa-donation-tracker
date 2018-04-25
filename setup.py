@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='django-sda_donation_tracker',
-    version='2.1',
+    version='2.2',
     author='Games Done Quick',
     author_email='tracker@gamesdonequick.com',
     packages=['sda_donation_tracker'],
@@ -16,7 +16,7 @@ setup(
     package_data={'': ['README.rst']},
     install_requires=[
         'chromium-compact-language-detector',
-        'Django>=1.8',
+        'Django>=2.0',
         'django-post-office',
         'django-ajax-selects',
         'django-mptt',
@@ -34,11 +34,11 @@ setup(
         'License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.6',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ]
