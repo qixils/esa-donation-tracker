@@ -1,6 +1,6 @@
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect
 
 from . import common as views_common
 import tracker.models as models
@@ -94,6 +94,8 @@ def prize_winner(request, prize_win):
             totalCount = prizeAcceptForm.cleaned_data['total']
             params = dict(acceptcount=acceptCount, declinecount=totalCount -
                           acceptCount, prize=prizeWin.prize, prizeWin=prizeWin)
+            # Redirect user back to this page to avoid double submits.
+            return HttpResponseRedirect(prizeWin.make_winner_url())
         else:
             # this is a special case where we need to reset the model instance
             # for the page to work
