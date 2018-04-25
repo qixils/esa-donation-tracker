@@ -26,7 +26,9 @@ Prize: {{ prize.name }}
       <li> <span style="color: red">ERROR:</span> {{ prize.error }} </li>
     {% else %}
       {% for prizewinner in prize.prizewinner_set.all %}
-        <li> {{ prizewinner.winner }} </li>
+          {% if prizewinner.pendingcount|add:prizewinner.acceptcount %}
+              <li> {{ prizewinner.winner }} </li>
+          {% endif %}
       {% endfor %}
     {% endif %}
   </ul>
@@ -34,5 +36,9 @@ Prize: {{ prize.name }}
 {% endfor %}
 
 </ul>
+
+<p>
+    <a href="{% url 'admin:draw_prize_winners' %}">Go Back</a>
+</p>
 
 {% endblock %}
