@@ -2,20 +2,21 @@
 
 {% block sidebar %}
     {{ block.super }}
-<div class="module" style="float: left; width: 498px">
+<div class="module" style="width: 600px">
     <table style="width: 100%">
+        <caption>Admin Services</caption>
         <tbody>
-        <tr><td><a href="{% url 'admin:draw_prize_winners' %}">Draw Prize Winners</a></td></tr>
-        <tr><td><a href="{% url 'admin:automail_prize_contributors' %}">Mail Prize Contributors</a></td></tr>
-        <tr><td><a href="{% url 'admin:automail_prize_winners' %}">Mail Prize Winners</a></td></tr>
-        <tr><td><a href="{% url 'admin:automail_prize_accept_notifications' %}">Mail Prize Winner Accept Notifications</a></td></tr>
-        <tr><td><a href="{% url 'admin:automail_prize_shipping_notifications' %}">Mail Prize Winner Shipping Notifications</a></td></tr>
-        <tr><td><a href="{% url 'admin:process_donations' %}">Process Donations</a></td></tr>
-        <tr><td><a href="{% url 'admin:process_pending_bids' %}">Process Pending Bids</a></td></tr>
-        <tr><td><a href="{% url 'admin:process_prize_submissions' %}">Process Prize Submissions</a></td></tr>
-        <tr><td><a href="{% url 'admin:read_donations' %}">Read Donations</a></td></tr>
-        <tr><td><a href="{% url 'admin:select_event' %}">Select an Event</a></td></tr>
-        <tr><td><a href="{% url 'admin:show_completed_bids' %}">Show Completed Bids</a></td></tr>
+        <tr><th><a href="{% url 'admin:draw_prize_winners' %}">Draw Prize Winners</a></th></tr>
+        <tr><th><a href="{% url 'admin:automail_prize_contributors' %}">Mail Prize Contributors</a></th></tr>
+        <tr><th><a href="{% url 'admin:automail_prize_winners' %}">Mail Prize Winners</a></th></tr>
+        <tr><th><a href="{% url 'admin:automail_prize_accept_notifications' %}">Mail Prize Winner Accept Notifications</a></th></tr>
+        <tr><th><a href="{% url 'admin:automail_prize_shipping_notifications' %}">Mail Prize Winner Shipping Notifications</a></th></tr>
+        <tr><th><a href="{% url 'admin:process_donations' %}">Process Donations</a></th></tr>
+        <tr><th><a href="{% url 'admin:process_pending_bids' %}">Process Pending Bids</a></th></tr>
+        <tr><th><a href="{% url 'admin:process_prize_submissions' %}">Process Prize Submissions</a></th></tr>
+        <tr><th><a href="{% url 'admin:read_donations' %}">Read Donations</a></th></tr>
+        <tr><th><a href="{% url 'admin:select_event' %}">Select an Event</a></th></tr>
+        <tr><th><a href="{% url 'admin:show_completed_bids' %}">Show Completed Bids</a></th></tr>
         </tbody>
     </table>
 </div>
