@@ -20,10 +20,10 @@ You have declined receiving this prize.
 
 {% if prizeWin.pendingcount > 0 %}
 <p>
-You have been selected as the winner of 
+You have been selected as the winner of
 {% if prize.maxwinners > 1 %}
   {% if prizeWin.pendingcount > 1 %}{{ prizeWin.pendingcount }} copies{% else %}a copy{% endif %} of
-{% endif %} this prize. 
+{% endif %} this prize.
 {% if prizeWin.pendingcount > 1 %}Please select the number you would like to accept, and we will re-roll the rest to other donors.{% else %}Please state whether you would like to accept or deny this prize.{% endif %} Your decision is final; we re-roll any unclaimed prizes immediately.
 </p>
 
@@ -33,17 +33,17 @@ Also, please enter/confirm your shipping address.
 </p>
 {% endif %}
 
-<form method="post">
+<form class="form-horizontal" method="post">
 {% csrf_token %}
 
-{% form_innards form showrequired=False %}
+{% form_innards form showrequired=False use_bootstrap=True %}
 
 {% if prizeWin.pendingcount > 1 %}
 <input type="submit" name="accept" value="Accept">
-<input type="submit" name="deny" value="Deny All">
+<input type="submit" name="deny" value="Decline All">
 {% else %}
 <input type="submit" name="accept" value="Accept">
-<input type="submit" name="deny" value="Deny">
+<input type="submit" name="deny" value="Decline">
 {% endif %}
 <br />
 <br />
@@ -51,7 +51,7 @@ Also, please enter/confirm your shipping address.
 
 </form>
 
-{% if prizeWin.acceptcount > 0 %} 
+{% if prizeWin.acceptcount > 0 %}
 <p>
 You have {% if prizeWin.pendingcount > 0 %}already {% endif %}accepted {{ prizeWin.acceptcount }} cop{{ prizeWin.acceptcount|pluralize:'y,ies' }} of this prize.
 </p>
