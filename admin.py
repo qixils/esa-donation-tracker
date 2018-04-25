@@ -2,24 +2,30 @@ from functools import reduce
 
 import django.contrib.admin.models
 import django.forms as djforms
+import requests
 from django.contrib import admin
 from django.contrib import messages
 from django.contrib.admin import SimpleListFilter
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import permission_required, REDIRECT_FIELD_NAME
-from django.core.exceptions import PermissionDenied
+from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import transaction
 from django.http import HttpResponse, HttpResponseRedirect, Http404
 from django.shortcuts import render, redirect
 from django.urls import reverse, path
+from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 import settings
 import tracker.filters as filters
 import tracker.forms as forms
+import tracker.horaro as horaro
 import tracker.logutil as logutil
 import tracker.models
 import tracker.prizemail as prizemail
 import tracker.prizeutil as prizeutil
+import tracker.tiltify as tiltify
 import tracker.views as views
 import tracker.viewutil as viewutil
 
@@ -287,7 +293,7 @@ def merge_bids_view(request, *args, **kwargs):
   else:
     objects = [int(x) for x in request.GET['objects'].split(',')]
     form = forms.MergeObjectsForm(model=tracker.models.Bid,objects=objects)
-  return render(request, 'admin/merge_bids.html', dictionary={'form': form})
+  return render(request, 'admin/merge_bids.html', context={'form': form})
 
 
 class BidSuggestionForm(djforms.ModelForm):
@@ -481,14 +487,54 @@ class PrizeWinnerInline(CustomStackedInline):
 class PrizeWinnerAdmin(CustomModelAdmin):
   form = PrizeWinnerForm
   search_fields = ['prize__name', 'winner__email']
-  list_display = ['__str__', 'prize', 'winner']
-  readonly_fields = ['winner_email',]
+  list_display = ['__str__', 'prize', 'winner', 'pendingcount', 'acceptcount', 'declinecount', 'accept_url']
+  list_editable = ('pendingcount', 'acceptcount', 'declinecount')
+  readonly_fields = ['winner_email', 'accept_url', 'winner_address']
   fieldsets = [
-    (None, { 'fields': ['prize', 'winner', 'winner_email', 'emailsent', 'pendingcount', 'acceptcount', 'declinecount', 'acceptdeadline', ], }),
-    ('Shipping Info', { 'fields': ['acceptemailsentcount', 'shippingstate', 'shippingemailsent', 'trackingnumber', 'shippingcost', 'shipping_receipt_url'] })
+    (None, { 'fields': ['prize', 'winner', 'winner_email', 'emailsent', 'pendingcount', 'acceptcount', 'declinecount', 'acceptdeadline', 'accept_url'], }),
+    ('Shipping Info', { 'fields': ['acceptemailsentcount', 'shippingstate', 'winner_address', 'shippingemailsent',
+                                   'trackingnumber', 'shippingcost', 'shipping_receipt_url'] })
   ]
+
   def winner_email(self, obj):
     return obj.winner.email
+
+  def accept_url(self, obj):
+    """
+    :type obj: tracker.models.PrizeWinner
+    """
+    # Only show link if the prize is pending acceptance.
+    if obj.pendingcount > 0:
+      return format_html("""<a href="{}">Link</a>""".format(obj.make_winner_url()))
+    else:
+      return format_html("")
+
+  accept_url.short_description = "Prize Acceptance Form"
+
+  def winner_address(self, obj):
+    """
+    :type obj: tracker.models.PrizeWinner
+    """
+    if obj.prize.requiresshipping:
+      addr_str = ""
+      for field in (
+          'addressstreet',
+          'addresscity',
+          'addressstate',
+          'addresscountry',
+          'addresszip',
+      ):
+        val = getattr(obj.winner, field)
+        if val:
+          addr_str += "{}<br>".format(val)
+      return format_html("""{}<br><a href="{}">Edit Address</a>""".format(
+        addr_str, reverse('admin:{}_{}_change'.format(
+          obj.winner._meta.app_label, obj.winner._meta.model_name), args=[obj.winner.id])))
+    else:
+      return format_html("N/A")
+
+  winner_address.short_description = "Winner Shipping Address"
+
   def get_queryset(self, request):
     event = viewutil.get_selected_event(request)
     params = {}
@@ -497,6 +543,21 @@ class PrizeWinnerAdmin(CustomModelAdmin):
     if event:
       params['event'] = event.id
     return filters.run_model_query('prizewinner', params, user=request.user, mode='admin')
+
+  def announce_winners(self, request, queryset):
+    for prize_winner in queryset:
+      try:
+        prize_winner.announce_to_chat()
+      except ValidationError as e:
+        self.message_user(request, "Couldn't announce {}, winner {} - {}".format(
+          prize_winner.prize.name, prize_winner.winner.alias, e.message), level=messages.ERROR)
+      else:
+        self.message_user(request, "Announced prize {}, winner {}".format(
+          prize_winner.prize.name, prize_winner.winner.alias), level=messages.SUCCESS)
+
+  announce_winners.short_description = "Announce selected winners to chat"
+
+  actions = [announce_winners]
 
 class DonorPrizeEntryForm(djforms.ModelForm):
   donor = make_ajax_field(tracker.models.DonorPrizeEntry, 'donor', 'donor')
@@ -575,7 +636,7 @@ def merge_donors_view(request, *args, **kwargs):
   else:
     donors = [int(x) for x in request.GET['objects'].split(',')]
     form = forms.MergeObjectsForm(model=tracker.models.Donor,donors=donors)
-  return render(request, 'admin/merge_donors.html', dictionary={'form': form})
+  return render(request, 'admin/merge_donors.html', context={'form': form})
 
 def google_flow(request):
   try:
@@ -609,7 +670,7 @@ class EventAdmin(CustomModelAdmin):
   inlines = [EventBidInline]
   list_display = ['name', 'locked']
   list_editable = ['locked']
-  readonly_fields = ['scheduleid']
+  readonly_fields = ['scheduleid', 'admin_horaro_check_cols']
   fieldsets = [
     (None, { 'fields': ['short', 'name', 'receivername', 'targetamount', 'minimumdonation', 'date', 'timezone', 'locked'] }),
     ('Paypal', {
@@ -628,7 +689,76 @@ class EventAdmin(CustomModelAdmin):
       'classes': ['collapse'],
       'fields': ['scheduleid']
     }),
+    ('Horaro Schedule', {
+      'classes': ('collapse',),
+      'fields': ('horaro_id', 'admin_horaro_check_cols', 'horaro_game_col', 'horaro_category_col',
+                 'horaro_runners_col'),
+    }),
+    ('Tiltify Donations', {
+      'classes': ('collapse',),
+      'fields': ('tiltify_enable_sync', 'tiltify_api_key'),
+    }),
+    ('Twitch Chat Announcements', {
+      'classes': ('collapse',),
+      'fields': ('twitch_channel', 'twitch_login', 'twitch_oauth'),
+    }),
   ]
+
+  class Media:
+    js = (
+      'event_admin.js',
+    )
+
+  def merge_horaro_schedule(self, request, queryset):
+    """Merge run schedule from Horaro API."""
+    if len(queryset) != 1:
+      self.message_user(request, "Please select only a single event for Horaro merge", level=messages.ERROR)
+      return
+
+    # Get content type for log entries.
+    ct = ContentType.objects.get_for_model(tracker.models.Event)
+
+    for event in queryset:
+      try:
+        with transaction.atomic():
+          num_runs = horaro.merge_event_schedule(event)
+          msg = 'Merged Horaro schedule for event {0!r}'.format(event)
+          admin.models.LogEntry.objects.log_action(user_id=request.user.id, content_type_id=ct.pk, object_id=event.pk,
+                                                   object_repr=str(event), action_flag=admin.models.CHANGE,
+                                                   change_message=msg)
+      except horaro.HoraroError as e:
+        self.message_user(request, "Can't merge Horaro schedule - {}".format(e), level=messages.ERROR)
+      else:
+        self.message_user(request, "%d runs merged for %s." % (num_runs, event.name), level=messages.SUCCESS)
+
+  merge_horaro_schedule.short_description = "Merge Horaro schedule for a single event (do this once every 24 hours)"
+
+  def sync_tiltify_donations(self, request, queryset):
+    """Sync donations from Tiltify API."""
+    if len(queryset) != 1:
+      self.message_user(request, "Please select only a single event for Tiltify sync", level=messages.ERROR)
+      return
+
+    # Get content type for log entries.
+    ct = ContentType.objects.get_for_model(tracker.models.Event)
+
+    # Sync donations from Tiltify API.
+    for event in queryset:
+      try:
+        with transaction.atomic():
+          num_donations = tiltify.sync_event_donations(event)
+          msg = 'Synced Tiltify donations for event {0!r}'.format(event)
+          admin.models.LogEntry.objects.log_action(user_id=request.user.id, content_type_id=ct.pk, object_id=event.pk,
+                                                   object_repr=str(event), action_flag=admin.models.CHANGE,
+                                                   change_message=msg)
+      except (ValidationError, requests.exceptions.RequestException) as e:
+        self.message_user(request, "Can't sync Tiltify donations - {}".format(e), level=messages.ERROR)
+      else:
+        self.message_user(request, "%d donations synced for %s." % (num_donations, event.name), level=messages.SUCCESS)
+
+  sync_tiltify_donations.short_description = "Sync Tiltify donations for a single event"
+
+  actions = [merge_horaro_schedule, sync_tiltify_donations]
 
 class PostbackURLForm(djforms.ModelForm):
   event = make_ajax_field(tracker.models.PostbackURL, 'event', 'event', initial=latest_event_id)
@@ -682,7 +812,9 @@ class PrizeAdmin(CustomModelAdmin):
       'fields': ['provider', 'creator', 'creatoremail', 'creatorwebsite', 'extrainfo', 'estimatedvalue', 'acceptemailsent', 'state', 'reviewnotes',] }),
     ('Drawing Parameters', {
       'classes': ['collapse'],
-      'fields': ['maxwinners', 'maxmultiwin', 'minimumbid', 'maximumbid', 'sumdonations', 'randomdraw', 'ticketdraw', 'startrun', 'endrun', 'starttime', 'endtime', 'custom_country_filter', 'allowed_prize_countries', 'disallowed_prize_regions']
+      'fields': ['maxwinners', 'maxmultiwin', 'minimumbid', 'maximumbid', 'sumdonations', 'randomdraw', 'ticketdraw',
+                 'auto_tickets', 'startrun', 'endrun', 'starttime', 'endtime', 'custom_country_filter',
+                 'allowed_prize_countries', 'disallowed_prize_regions']
     }),
   ]
   search_fields = ('name', 'description', 'shortdescription', 'provider', 'handler__username', 'handler__email', 'handler__last_name', 'handler__first_name', 'prizewinner__winner__firstname', 'prizewinner__winner__lastname', 'prizewinner__winner__alias', 'prizewinner__winner__email')
@@ -713,11 +845,12 @@ class PrizeAdmin(CustomModelAdmin):
   def draw_prize_internal(self, request, queryset, limit):
     numDrawn = 0
     for prize in queryset:
-      if limit == None:
+      if limit is None:
         limit = prize.maxwinners
       numToDraw = min(limit, prize.maxwinners - prize.current_win_count())
       drawingError = False
-      while not drawingError and numDrawn < numToDraw:
+      thisDrawn = 0
+      while not drawingError and thisDrawn < numToDraw:
         drawn, msg = prizeutil.draw_prize(prize)
         time.sleep(1)
         if not drawn:
@@ -725,24 +858,37 @@ class PrizeAdmin(CustomModelAdmin):
           drawingError = True
         else:
           numDrawn += 1
+          thisDrawn += 1
     if numDrawn > 0:
       self.message_user(request, "%d prizes drawn." % numDrawn)
+
   def draw_prize_once_action(self, request, queryset):
     self.draw_prize_internal(request, queryset, 1)
+
   draw_prize_once_action.short_description = "Draw a SINGLE winner for the selected prizes"
+
   def draw_prize_action(self, request, queryset):
     self.draw_prize_internal(request, queryset, None)
+
   draw_prize_action.short_description = "Draw (all) winner(s) for the selected prizes"
+
   def set_state_accepted(self, request, queryset):
     mass_assign_action(self, request, queryset, 'state', 'ACCEPTED')
+
   set_state_accepted.short_description = "Set state to Accepted"
+
   def set_state_pending(self, request, queryset):
     mass_assign_action(self, request, queryset, 'state', 'PENDING')
+
   set_state_pending.short_description = "Set state to Pending"
+
   def set_state_denied(self, request, queryset):
     mass_assign_action(self, request, queryset, 'state', 'DENIED')
+
   set_state_denied.short_description = "Set state to Denied"
+
   actions = [draw_prize_action, draw_prize_once_action, set_state_accepted, set_state_pending, set_state_denied]
+
   def get_queryset(self, request):
     event = viewutil.get_selected_event(request)
     params = {}
