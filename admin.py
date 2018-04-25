@@ -722,7 +722,7 @@ class EventAdmin(CustomModelAdmin):
       try:
         with transaction.atomic():
           num_runs = horaro.merge_event_schedule(event)
-          msg = 'Merged Horaro schedule for event {0!r}'.format(event)
+          msg = 'Merged Horaro schedule for event {} - {} runs'.format(event, num_runs)
           admin.models.LogEntry.objects.log_action(user_id=request.user.id, content_type_id=ct.pk, object_id=event.pk,
                                                    object_repr=str(event), action_flag=admin.models.CHANGE,
                                                    change_message=msg)
@@ -747,7 +747,7 @@ class EventAdmin(CustomModelAdmin):
       try:
         with transaction.atomic():
           num_donations = tiltify.sync_event_donations(event)
-          msg = 'Synced Tiltify donations for event {0!r}'.format(event)
+          msg = 'Synced Tiltify donations for event {} - {} donations'.format(event, num_donations)
           admin.models.LogEntry.objects.log_action(user_id=request.user.id, content_type_id=ct.pk, object_id=event.pk,
                                                    object_repr=str(event), action_flag=admin.models.CHANGE,
                                                    change_message=msg)
