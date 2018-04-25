@@ -9,6 +9,7 @@ from decimal import Decimal
 
 import post_office.mail
 import pytz
+from django.conf import settings
 from django.core import serializers
 from django.db import transaction
 from django.db.models import Sum
@@ -144,7 +145,7 @@ def donate(request, event):
 
   bidsJson = json.dumps(dumpArray, ensure_ascii=False, cls=serializers.json.DjangoJSONEncoder)
 
-  ticketPrizes = allPrizes.filter(ticketdraw=True)
+  ticketPrizes = allPrizes.filter(ticketdraw=True, auto_tickets=False)
 
   def prize_info(prize):
     result = {'id': prize.id, 'name': prize.name, 'description': prize.description, 'minimumbid': prize.minimumbid, 'maximumbid': prize.maximumbid, 'sumdonations': prize.sumdonations}
@@ -153,7 +154,18 @@ def donate(request, event):
   dumpArray = [prize_info(o) for o in ticketPrizes.all()]
   ticketPrizesJson = json.dumps(dumpArray, ensure_ascii=False, cls=serializers.json.DjangoJSONEncoder)
 
-  return views_common.tracker_response(request, "tracker/donate.html", { 'event': event, 'bidsform': bidsform, 'prizesform': prizesform, 'commentform': commentform, 'hasBids': bids.count() > 0, 'bidsJson': bidsJson, 'hasTicketPrizes': ticketPrizes.count() > 0, 'ticketPrizesJson': ticketPrizesJson, 'prizes': prizes})
+  return views_common.tracker_response(request, "tracker/donate.html", {
+    'event': event,
+    'bidsform': bidsform,
+    'prizesform': prizesform,
+    'commentform': commentform,
+    'hasBids': bids.count() > 0,
+    'bidsJson': bidsJson,
+    'hasTicketPrizes': ticketPrizes.count() > 0,
+    'ticketPrizesJson': ticketPrizesJson,
+    'prizes': prizes,
+    'site_name': settings.SITE_NAME,
+  })
 
 @csrf_exempt
 @never_cache
