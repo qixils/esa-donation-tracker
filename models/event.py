@@ -1,19 +1,18 @@
-import re
 import datetime
-import pytz
 import decimal
-
-from timezone_field import TimeZoneField
-from django.db import models
-from django.core.exceptions import ValidationError
-from django.db.utils import OperationalError
-from django.core import validators
-from django.contrib.auth.models import User
+import re
 
 import post_office.models
+import pytz
+from django.contrib.auth.models import User
+from django.core import validators
+from django.core.exceptions import ValidationError
+from django.db import models
+from django.db.utils import OperationalError
+from django.utils.html import format_html
+from timezone_field import TimeZoneField
 
 import tracker.util as util
-
 from ..validators import *
 
 __all__ = [
@@ -145,6 +144,31 @@ class Event(models.Model):
   prizewinneracceptemailtemplate = models.ForeignKey(post_office.models.EmailTemplate, default=None, null=True, blank=True, verbose_name='Prize Accepted Email Template', help_text="Email template to use when someone accepts a prize (and thus it needs to be shipped).", related_name='event_prizewinneraccepttemplates', on_delete=models.PROTECT)
   prizeshippedemailtemplate = models.ForeignKey(post_office.models.EmailTemplate, default=None, null=True, blank=True, verbose_name='Prize Shipped Email Template', help_text="Email template to use when the aprize has been shipped to its recipient).", related_name='event_prizeshippedtemplates', on_delete=models.PROTECT)
 
+  # Fields for Horaro schedule import
+  horaro_id = models.CharField(max_length=100, verbose_name='Event ID', blank=True, default='',
+                               help_text='ID or slug for Horaro event')
+  horaro_game_col = models.IntegerField(verbose_name='Game Column', blank=True, null=True,
+                                        help_text='Column index for game info (start at 0)')
+  horaro_category_col = models.IntegerField(verbose_name='Category Column', blank=True, null=True,
+                                            help_text='Column index for category info (start at 0)')
+  horaro_runners_col = models.IntegerField(verbose_name='Runners Column', blank=True, null=True,
+                                           help_text='Column index for runner info (start at 0)')
+  horaro_commentators_col = models.IntegerField(verbose_name='Commentators Column', blank=True, null=True,
+                                                help_text='Column index for commentator info (start at 0)')
+
+  # Fields for Tiltify donation import
+  tiltify_enable_sync = models.BooleanField(default=False, verbose_name='Enable Tiltify Sync',
+                                            help_text='Sync donations for this event via the Tiltify API')
+  tiltify_api_key = models.CharField(max_length=100, verbose_name='Tiltify Campaign API Key', blank=True, default='')
+
+  # Fields for Twitch chat announcements
+  twitch_channel = models.CharField(max_length=100, verbose_name='Channel Name', blank=True, default='',
+                                    help_text='Announcements will be made to this channel')
+  twitch_login = models.CharField(max_length=100, verbose_name='Username', blank=True, default='',
+                                  help_text='Username to use for chat announcements')
+  twitch_oauth = models.CharField(max_length=200, verbose_name='OAuth Password', blank=True, default='',
+                                  help_text='Get one here: http://www.twitchapps.com/tmi')
+
   def __str__(self):
     return self.name
 
@@ -152,15 +176,44 @@ class Event(models.Model):
     return (self.short,)
 
   def clean(self):
+    errors = {}
+
     if self.id and self.id < 1:
       raise ValidationError('Event ID must be positive and non-zero')
     if not re.match('^\w+$', self.short):
-      raise ValidationError('Event short name must be a url-safe string')
+      errors['short'] = 'Event short name must be a url-safe string'
     if not self.scheduleid:
       self.scheduleid = None
     if self.donationemailtemplate != None or self.pendingdonationemailtemplate != None:
       if not self.donationemailsender:
-        raise ValidationError('Must specify a donation email sender if automailing is used')
+        errors['donationemailsender'] = 'Must specify a donation email sender if automailing is used'
+
+    # If Tiltify sync is enabled, the API key must be populated.
+    if self.tiltify_enable_sync and not self.tiltify_api_key:
+      errors['tiltify_api_key'] = 'Must be populated if Tiltify sync is enabled'
+
+    # If any Twitch chat fields are filled in, they all must be.
+    if self.twitch_channel or self.twitch_login or self.twitch_oauth:
+      if not self.twitch_channel:
+        errors['twitch_channel'] = 'Must be filled if enabling Twitch chat announcements'
+      if not self.twitch_login:
+        errors['twitch_login'] = 'Must be filled if enabling Twitch chat announcements'
+      if not self.twitch_oauth:
+        errors['twitch_oauth'] = 'Must be filled if enabling Twitch chat announcements'
+
+    # Don't put the "oauth:" starting part on the token.  IRC code will add this automatically.
+    if self.twitch_oauth.startswith("oauth:"):
+      self.twitch_oauth = self.twitch_oauth[6:]
+
+    if errors:
+      raise ValidationError(errors)
+
+  # Extra field for displaying Horaro columns on admin UI.
+  def admin_horaro_check_cols(self):
+    return format_html('<span id="horaro_cols"></span>')
+
+  admin_horaro_check_cols.allow_tags = True
+  admin_horaro_check_cols.short_description = "Schedule Columns"
 
   class Meta:
     app_label = 'tracker'
@@ -178,6 +231,7 @@ def LatestEvent():
     except (Event.DoesNotExist, OperationalError):
       return None
   return None
+
 
 class PostbackURL(models.Model):
   event = models.ForeignKey('Event', on_delete=models.PROTECT, verbose_name='Event', null=False, blank=False, related_name='postbacks')
@@ -300,6 +354,7 @@ class Runner(models.Model):
 
   class Meta:
     app_label = 'tracker'
+    ordering = ('name',)
 
   objects = _Manager()
   name = models.CharField(max_length=64,unique=True)
