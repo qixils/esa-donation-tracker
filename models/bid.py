@@ -171,7 +171,7 @@ class DonationBid(models.Model):
   class Meta:
     app_label = 'tracker'
     verbose_name = 'Donation Bid'
-    ordering = [ '-donation__timereceived' ]
+    ordering = [ '-donation__timereceived', 'bid__name' ]
     unique_together = (('bid', 'donation'),)
   def clean(self):
     if not self.bid.istarget:
@@ -200,7 +200,7 @@ class BidSuggestion(models.Model):
   name = models.CharField(max_length=64, blank=False, null=False, verbose_name="Name")
   class Meta:
     app_label = 'tracker'
-    ordering = [ 'name' ]
+    ordering = ['bid__event__date', 'bid__speedrun__starttime', 'bid__parent__name', 'bid__name', 'name' ]
   def clean(self):
     sameBid = BidSuggestion.objects.filter(Q(name__iexact=self.name) & (Q(bid__event=self.bid.get_event()) | Q(bid__speedrun__event=self.bid.get_event())))
     if sameBid.exists():

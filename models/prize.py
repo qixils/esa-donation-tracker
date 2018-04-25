@@ -321,6 +321,8 @@ class PrizeWinner(models.Model):
     app_label = 'tracker'
     verbose_name = 'Prize Winner'
     unique_together = ( 'prize', 'winner', )
+    ordering = ('prize__event__date', 'prize__startrun__starttime', 'prize__starttime', 'prize__name',
+                'winner__lastname', 'winner__firstname', 'winner__email', 'winner__alias')
 
   def accept_deadline_date(self):
     """Return the actual calendar date associated with the accept deadline"""
@@ -411,6 +413,7 @@ class PrizeCategory(models.Model):
     app_label = 'tracker'
     verbose_name = 'Prize Category'
     verbose_name_plural = 'Prize Categories'
+    ordering = ('name',)
 
   def natural_key(self):
     return (self.name,)
@@ -429,6 +432,8 @@ class DonorPrizeEntry(models.Model):
     verbose_name = 'Donor Prize Entry'
     verbose_name_plural = 'Donor Prize Entries'
     unique_together = ('prize','donor',)
+    ordering = ('prize__event__date', 'prize__startrun__starttime', 'prize__starttime', 'prize__name',
+                'donor__lastname', 'donor__firstname', 'donor__email', 'donor__alias')
 
   def __str__(self):
     return str(self.donor) + ' entered to win ' + str(self.prize)

@@ -221,7 +221,7 @@ class Event(models.Model):
     permissions = (
       ('can_edit_locked_events', 'Can edit locked events'),
     )
-    ordering = ('date',)
+    ordering = ('date', 'name')
 
 
 def LatestEvent():
@@ -280,7 +280,7 @@ class SpeedRun(models.Model):
     app_label = 'tracker'
     verbose_name = 'Speed Run'
     unique_together = (( 'name','category','event' ), ('event', 'order'))
-    ordering = [ 'event__date', 'order' ]
+    ordering = [ 'event__date', 'order', 'name' ]
     permissions = (
       ('can_view_tech_notes', 'Can view tech notes'),
     )
@@ -373,6 +373,7 @@ class Runner(models.Model):
 class Submission(models.Model):
   class Meta:
     app_label = 'tracker'
+    ordering = ('run__event__date', 'run__order', 'run__name', 'game_name', 'category')
 
   external_id = models.IntegerField(primary_key=True)
   run = models.ForeignKey('SpeedRun', on_delete=models.PROTECT)

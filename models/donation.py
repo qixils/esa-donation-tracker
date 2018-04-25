@@ -178,7 +178,7 @@ class Donor(models.Model):
       ('view_usernames', 'Can view full usernames'),
       ('view_emails', 'Can view email addresses'),
     )
-    ordering = ['lastname', 'firstname', 'email']
+    ordering = ['lastname', 'firstname', 'email', 'alias']
   def clean(self):
     # an empty value means a null value
     if not self.alias:
