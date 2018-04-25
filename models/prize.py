@@ -1,20 +1,19 @@
+import datetime
 from decimal import Decimal
 
 import pytz
-import datetime
-
-from django.db import models
-from django.core.exceptions import ValidationError
-from django.db.models import Sum, Q
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+from django.db import models
+from django.db.models import Sum, Q
 from django.urls import reverse
 
-from ..validators import *
-from .event import LatestEvent, TimestampField
-from ..models import Event, Donation, SpeedRun
-import tracker.util as util
-
 import settings
+import tracker.util as util
+from .event import LatestEvent, TimestampField
+from ..irc import TwitchAnnouncer
+from ..models import Event, Donation, SpeedRun
+from ..validators import *
 
 __all__ = [
   'Prize',
@@ -47,6 +46,8 @@ class Prize(models.Model):
   sumdonations = models.BooleanField(default=False,verbose_name='Sum Donations')
   randomdraw = models.BooleanField(default=True,verbose_name='Random Draw')
   ticketdraw = models.BooleanField(default=False,verbose_name='Ticket Draw')
+  auto_tickets = models.BooleanField(default=False, verbose_name='Automatic Tickets',
+                                     help_text='Counts all qualifying donations towards tickets automatically')
   event = models.ForeignKey('Event',on_delete=models.PROTECT,default=LatestEvent)
   startrun = models.ForeignKey('SpeedRun',on_delete=models.PROTECT,related_name='prize_start',null=True,blank=True,verbose_name='Start Run')
   endrun = models.ForeignKey('SpeedRun',on_delete=models.PROTECT,related_name='prize_end',null=True,blank=True,verbose_name='End Run')
@@ -101,6 +102,8 @@ class Prize(models.Model):
         raise ValidationError('Maximum Bid cannot be lower than Minimum Bid')
       if not self.sumdonations and self.maximumbid != self.minimumbid:
         raise ValidationError('Maximum Bid cannot differ from Minimum Bid if Sum Donations is not checked')
+    if self.auto_tickets and not self.ticketdraw:
+      raise ValidationError('Ticket Draw must be enabled if Automatic Tickets is checked')
     if self.image and self.imagefile:
       raise ValidationError('Cannot have both an Image URL and an Image File')
 
@@ -119,14 +122,17 @@ class Prize(models.Model):
       regionBlacklist = self.event.disallowed_prize_regions.all()
 
     if countryFilter.exists():
-      donationSet = donationSet.filter(donor__addresscountry__in=countryFilter)
+      # Allow null countries in the draw because we don't know if they should be excluded or not.
+      # Prize acceptance form will make sure they enter a valid country.
+      donationSet = donationSet.filter(Q(donor__addresscountry__in=countryFilter) |
+                                       Q(donor__addresscountry__isnull=True))
     if regionBlacklist.exists():
       for region in regionBlacklist:
         donationSet = donationSet.exclude(donor__addresscountry=region.country, donor__addressstate__iexact=region.name)
 
     fullDonors = PrizeWinner.objects.filter(prize=self,sumcount=self.maxmultiwin)
     donationSet = donationSet.exclude(donor__in=[x.winner for x in fullDonors])
-    if self.ticketdraw:
+    if self.ticketdraw and not self.auto_tickets:
       donationSet = donationSet.filter(tickets__prize=self)
     elif self.has_draw_time():
       donationSet = donationSet.filter(timereceived__gte=self.start_draw_time(),timereceived__lte=self.end_draw_time())
@@ -266,6 +272,10 @@ class Prize(models.Model):
     else:
       return None
 
+  @property
+  def announce_winners_to_chat(self):
+    return bool(self.event.twitch_channel and self.event.twitch_login and self.event.twitch_oauth)
+
 
 class PrizeTicket(models.Model):
   prize = models.ForeignKey('Prize', on_delete=models.PROTECT, related_name='tickets')
@@ -369,6 +379,21 @@ class PrizeWinner(models.Model):
 
   def __str__(self):
     return str(self.prize) + ' -- ' + str(self.winner)
+
+  def announce_to_chat(self):
+    """Announce to chat if enabled for the event."""
+    if not self.prize.announce_winners_to_chat:
+      raise ValidationError("Winners for this prize are not announced to chat")
+
+    if not (self.pendingcount or self.acceptcount):
+      raise ValidationError("Winner has no prize counts pending or accepted")
+
+    msg = "Congratulations {}!  You're the winner of {}!  Thank you very much for your donation!".format(
+      self.winner.alias, self.prize.name)
+
+    bot = TwitchAnnouncer(self.prize.event.twitch_login, self.prize.event.twitch_oauth,
+                          self.prize.event.twitch_channel)
+    bot.send_message(msg)
 
 
 class PrizeCategoryManager(models.Manager):
