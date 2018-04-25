@@ -35,6 +35,8 @@ def draw_prize(prize, seed=None):
                         winRecord.pendingcount += 1
                     ret['winner'] = winRecord.winner.id
                     winRecord.save()
+                    if prize.announce_winners_to_chat:
+                        winRecord.announce_to_chat()
                 except Exception as e:
                     return False, {"error": "Error drawing prize: " + prize.name + ", " + str(e)}
                 return True, ret
