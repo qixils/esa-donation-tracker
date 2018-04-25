@@ -801,7 +801,7 @@ class AddressForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(AddressForm, self).__init__(*args, **kwargs)
         self.fields['addresscountry'] = forms.ModelChoiceField(
-            queryset=models.Country.objects.all(), required=True)
+            queryset=models.Country.objects.all(), required=True, label='Country')
         self.fields['addressstreet'].required = True
         self.fields['addresscity'].required = True
         self.fields['addressstate'].required = True
@@ -827,6 +827,10 @@ class PrizeAcceptanceWithAddressForm(betterforms.multiform.MultiModelForm):
         super(PrizeAcceptanceWithAddressForm, self).__init__(*args, **kwargs)
         if not self.forms['prizeaccept'].instance.prize.requiresshipping:
             del self.forms['address']
+        else:
+            # Make address fields only required if the user is accepting the prize.
+            for k in self.forms['address'].fields:
+                self.forms['address'].fields[k].required = self.forms['prizeaccept'].accepted
 
 
 class PrizeShippingForm(forms.ModelForm):
