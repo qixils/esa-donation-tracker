@@ -32,7 +32,7 @@ _currencyChoices = (('USD','US Dollars'),('CAD', 'Canadian Dollars'))
 
 DonorVisibilityChoices = (('FULL', 'Fully Visible'), ('FIRST', 'First Name, Last Initial'), ('ALIAS', 'Alias Only'), ('ANON', 'Anonymous'))
 
-DonationDomainChoices = (('LOCAL', 'Local'), ('CHIPIN', 'ChipIn'), ('PAYPAL', 'PayPal'))
+DonationDomainChoices = (('LOCAL', 'Local'), ('CHIPIN', 'ChipIn'), ('PAYPAL', 'PayPal'), ('TILTIFY', 'Tiltify'))
 
 LanguageChoices = (('un', 'Unknown'), ('en', 'English'), ('fr', 'French'), ('de', 'German'))
 
@@ -80,16 +80,30 @@ class Donation(models.Model):
     return reduce(lambda a, b: a + b, [b.amount for b in self.bids.all()], Decimal('0.00'))
 
   def prize_ticket_amount(self, targetPrize):
-    return sum([ticket.amount for ticket in self.tickets.filter(prize=targetPrize)])
+    """
+    :param targetPrize:
+    :type targetPrize: tracker.models.Prize
+    :return: Prize ticket amount
+    :rtype: Decimal
+    """
+    # For automatic ticket prizes, the whole donation amount counts.
+    if targetPrize.auto_tickets:
+      return self.amount
+    else:
+      return sum([ticket.amount for ticket in self.tickets.filter(prize=targetPrize)])
 
   def clean(self,bid=None):
     super(Donation,self).clean()
+
     if self.domain == 'LOCAL': # local donations are always complete, duh
       if not self.donor:
         raise ValidationError('Local donations must have a donor')
       self.transactionstate = 'COMPLETED'
-    if not self.donor and self.transactionstate != 'PENDING':
+
+    # Tiltify donations imported might be anonymous.  Everything else should have a donor.
+    if not self.donor and self.transactionstate != 'PENDING' and self.domain != 'TILTIFY':
       raise ValidationError('Donation must have a donor when in a non-pending state')
+
     if not self.domainId and self.donor and self.timereceived:
       self.domainId = str(calendar.timegm(self.timereceived.timetuple())) + self.donor.email
 
