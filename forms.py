@@ -828,9 +828,24 @@ class PrizeAcceptanceWithAddressForm(betterforms.multiform.MultiModelForm):
         if not self.forms['prizeaccept'].instance.prize.requiresshipping:
             del self.forms['address']
         else:
-            # Make address fields only required if the user is accepting the prize.
+            # Make address fields not required to start.
+            for k in self.forms['address'].fields:
+                self.forms['address'].fields[k].required = False
+
+    def is_valid(self):
+        # Make address fields only required if the user is accepting the prize.
+        if 'address' in self.forms:
             for k in self.forms['address'].fields:
                 self.forms['address'].fields[k].required = self.forms['prizeaccept'].accepted
+
+        ret = super().is_valid()
+
+        # Put address fields back to not required for the actual form display so they won't have the required attribute.
+        if 'address' in self.forms:
+            for k in self.forms['address'].fields:
+                self.forms['address'].fields[k].required = False
+
+        return ret
 
 
 class PrizeShippingForm(forms.ModelForm):
