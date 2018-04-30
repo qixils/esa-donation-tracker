@@ -2,7 +2,8 @@ from datetime import *
 
 import dateutil.parser
 import pytz
-from django.db.models import Q, F, Sum
+from django.db.models import Q, F, Sum, Value
+from django.db.models.functions import Coalesce
 
 from tracker.models import *
 
@@ -667,7 +668,7 @@ def apply_feed_filter(query, model, feedName, params, user=None, noslice=False):
     elif feedName == 'todraw':
       # Filter based on draw time and check total drawn still less than max winners.
       query = query.filter(todraw_prizes_filter()).annotate(
-        numdrawn=Sum('prizewinner__pendingcount') + Sum('prizewinner__acceptcount')).filter(
+        numdrawn=Coalesce(Sum('prizewinner__pendingcount') + Sum('prizewinner__acceptcount'), Value(0))).filter(
         numdrawn__lt=F('maxwinners'))
   elif model == 'bidsuggestion':
     if feedName == 'expired':
