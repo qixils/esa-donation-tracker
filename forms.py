@@ -501,8 +501,9 @@ class DrawPrizeWinnersForm(forms.Form):
             required=False, label='Random Seed', help_text="Completely optional, if you don't know what this is, don't worry about it")
 
     def clean(self):
-        self.cleaned_data['prizes'] = list(
-            [models.Prize.objects.get(id=x) for x in self.cleaned_data['prizes']])
+        if 'prizes' in self.cleaned_data:
+            self.cleaned_data['prizes'] = list(
+                [models.Prize.objects.get(id=x) for x in self.cleaned_data['prizes']])
         return self.cleaned_data
 
 
