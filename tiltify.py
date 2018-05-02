@@ -98,19 +98,23 @@ def sync_event_donations(event):
             donation = Donation.objects.select_for_update().get(domain='TILTIFY', domainId=t_donation['id'])
         except Donation.DoesNotExist:
             donation = Donation(event=event, domain='TILTIFY', domainId=t_donation['id'], readstate='PENDING',
-                                commentstate='PENDING')
+                                commentstate='PENDING', donor=donor)
 
         # Make sure this donation wasn't already imported for a different event.
         if donation.event != event:
             raise ValidationError("Donation {!r} already exists for a different event".format(donation.domainId))
 
-        donation.donor = donor
         donation.transactionstate = 'COMPLETED'
         donation.amount = t_donation['amount']
         donation.currency = t_donation['currency_code']
-        donation.comment = t_donation['comment']
         donation.timereceived = _parse_tiltify_datetime(t_donation['created'])
         donation.testdonation = event.usepaypalsandbox
+
+        # Comment might be null from Tiltify, but can't be null on our end.
+        if t_donation['comment']:
+            donation.comment = t_donation['comment']
+        else:
+            donation.comment = ''
 
         donation.save()
         num_donations += 1
