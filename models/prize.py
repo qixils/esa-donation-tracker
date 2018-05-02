@@ -108,7 +108,8 @@ class Prize(models.Model):
       raise ValidationError('Cannot have both an Image URL and an Image File')
 
   def eligible_donors(self):
-    donationSet = Donation.objects.filter(event=self.event,transactionstate='COMPLETED').select_related('donor')
+    donationSet = Donation.objects.filter(event=self.event, transactionstate='COMPLETED',
+                                          donor__isnull=False).select_related('donor')
     # remove all donations from donors who have won a prize under the same category for this event
     if self.category != None:
       donationSet = donationSet.exclude(Q(donor__prizewinner__prize__category=self.category, donor__prizewinner__prize__event=self.event))
