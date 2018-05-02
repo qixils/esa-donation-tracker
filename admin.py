@@ -490,8 +490,10 @@ class PrizeWinnerInline(CustomStackedInline):
 class PrizeWinnerAdmin(CustomModelAdmin):
   form = PrizeWinnerForm
   search_fields = ['prize__name', 'winner__email']
-  list_display = ['__str__', 'prize', 'winner', 'pendingcount', 'acceptcount', 'declinecount', 'accept_url']
-  list_editable = ('pendingcount', 'acceptcount', 'declinecount')
+  list_display = ['__str__', 'prize', 'prize_event', 'winner', 'pendingcount', 'acceptcount', 'declinecount',
+                  'shippingstate', 'accept_url']
+  list_editable = ('pendingcount', 'acceptcount', 'declinecount', 'shippingstate')
+  list_filter = ['prize__event', 'shippingstate']
   list_select_related = ('prize', 'prize__event', 'prize__startrun', 'winner')
   readonly_fields = ['winner_email', 'accept_url', 'winner_address']
   fieldsets = [
@@ -502,6 +504,11 @@ class PrizeWinnerAdmin(CustomModelAdmin):
 
   def winner_email(self, obj):
     return obj.winner.email
+
+  def prize_event(self, obj):
+    return obj.prize.event
+
+  prize_event.short_description = "Event"
 
   def accept_url(self, obj):
     """
