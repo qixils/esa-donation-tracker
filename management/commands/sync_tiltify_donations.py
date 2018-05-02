@@ -1,11 +1,17 @@
 import requests
 from django.core.exceptions import ValidationError
 from django.db import transaction
+import traceback
 
 import tracker.commandutil as commandutil
 import tracker.models as models
 import tracker.tiltify as tiltify
 import tracker.viewutil as viewutil
+
+
+class RollbackError(Exception):
+    """Test mode run is complete and we need to roll back."""
+    pass
 
 
 class Command(commandutil.TrackerCommand):
@@ -43,8 +49,11 @@ class Command(commandutil.TrackerCommand):
 
                 if dry_run:
                     self.message("Rolling back operations...")
-                    raise Exception("Cancelled due to dry run.")
-        except:
+                    raise RollbackError("Cancelled due to dry run.")
+        except RollbackError:
             self.message("Rollback complete.")
+        except Exception as e:
+            self.message("Got error {}".format(e))
+            self.message(traceback.format_exc())
 
         self.message("Completed.")
