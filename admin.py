@@ -145,6 +145,27 @@ class PrizeListFilter(SimpleListFilter):
     else:
       return queryset
 
+
+class PrizeWinnerListFilter(SimpleListFilter):
+  title = "Accept Status"
+  parameter_name = 'accept_status'
+
+  def lookups(self, request, model_admin):
+    return (
+      ('pending', 'Pending'),
+      ('accepted', 'Accepted'),
+      ('declined', 'Declined'),
+    )
+
+  def queryset(self, request, queryset):
+    if self.value() == 'pending':
+      return queryset.filter(pendingcount__gt=0)
+    elif self.value() == 'accepted':
+      return queryset.filter(acceptcount__gt=0)
+    elif self.value() == 'declined':
+      return queryset.filter(declinecount__gt=0)
+
+
 def bid_open_action(modeladmin, request, queryset):
   bid_set_state_action(modeladmin, request, queryset, 'OPENED')
 bid_open_action.short_description = "Set Bids as OPENED"
@@ -491,9 +512,9 @@ class PrizeWinnerAdmin(CustomModelAdmin):
   form = PrizeWinnerForm
   search_fields = ['prize__name', 'winner__email']
   list_display = ['__str__', 'prize', 'prize_event', 'winner', 'pendingcount', 'acceptcount', 'declinecount',
-                  'shippingstate', 'accept_url']
+                  'shippingstate', 'prize_requiresshipping', 'accept_url']
   list_editable = ('pendingcount', 'acceptcount', 'declinecount', 'shippingstate')
-  list_filter = ['prize__event', 'shippingstate']
+  list_filter = ['prize__event', 'shippingstate', 'prize__requiresshipping', PrizeWinnerListFilter]
   list_select_related = ('prize', 'prize__event', 'prize__startrun', 'winner')
   readonly_fields = ['winner_email', 'accept_url', 'winner_address']
   fieldsets = [
@@ -509,6 +530,12 @@ class PrizeWinnerAdmin(CustomModelAdmin):
     return obj.prize.event
 
   prize_event.short_description = "Event"
+
+  def prize_requiresshipping(self, obj):
+    return obj.prize.requiresshipping
+
+  prize_requiresshipping.short_description = 'Requires Postal Shipping'
+  prize_requiresshipping.boolean = True
 
   def accept_url(self, obj):
     """
@@ -817,7 +844,7 @@ class PrizeAdmin(CustomModelAdmin):
   list_display = ('name', 'category', 'bidrange', 'games', 'start_draw_time', 'end_draw_time', 'sumdonations',
                   'randomdraw', 'event', 'state', 'winners_', 'provider', 'handler' )
   list_editable = ('state',)
-  list_filter = ('event', 'category', 'state', PrizeListFilter)
+  list_filter = ('event', 'category', 'state', 'requiresshipping', PrizeListFilter)
   list_select_related = ('event', 'startrun', 'endrun')
   fieldsets = [
     (None, { 'fields': ['name', 'description', 'shortdescription', 'image', 'altimage', 'event', 'category', 'requiresshipping', 'handler' ] }),
