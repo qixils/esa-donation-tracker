@@ -1,6 +1,6 @@
 from django.urls import path, include, re_path
 
-from .views import public, api, donateviews, user, auth, eventviews
+from .views import public, api, donateviews, user, auth, eventviews, feedviews
 
 app_name = 'tracker'
 urlpatterns = [
@@ -47,6 +47,11 @@ urlpatterns = [
 
     # AJAX calls
     path('horaro_schedule_cols/<slug:slug>', eventviews.HoraroScheduleColsView.as_view(), name='horaro_schedule_cols'),
+
+    # Data feed calls for tickers
+    path('feed/upcoming_runs/<slug:event>', feedviews.UpcomingRunsView.as_view(), name='feed_upcoming_runs'),
+    path('feed/upcoming_bids/<slug:event>', feedviews.UpcomingBidsView.as_view(), name='feed_upcoming_bids'),
+    path('feed/current_donations/<slug:event>', feedviews.CurrentDonationsView.as_view(), name='feed_current_donations'),
 
     path('user/index', user.user_index, name='user_index'),
     path('user/user_prize/<int:prize>', user.user_prize, name='user_prize'),
