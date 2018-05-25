@@ -245,6 +245,7 @@ class BidDependentsInline(BidInline):
 class BidAdmin(CustomModelAdmin):
   form = BidForm
   list_display = ('name', 'parentlong', 'istarget', 'goal', 'total', 'description', 'state', 'biddependency')
+  list_editable = ('state',)
   list_display_links = ('parentlong', 'biddependency')
   list_select_related = ('event', 'speedrun', 'parent')
   search_fields = ('name', 'speedrun__name', 'description', 'shortdescription', 'parent__name')
@@ -1137,8 +1138,11 @@ def show_completed_bids(request):
   params = {'feed': 'completed'}
   if current:
     params['event'] = current.id
-  bids = filters.run_model_query('bid', params, user=request.user, mode='admin')
+  bids = filters.run_model_query('bid', params, user=request.user, mode='admin').prefetch_related('options')
   bidList = list(bids)
+  for bid in bidList:
+    bid.children = list(bid.options.all())
+
   if request.method == 'POST':
     for bid in bidList:
       bid.state = 'CLOSED'
