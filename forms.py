@@ -152,7 +152,7 @@ class DonationBidFormV2(forms.Form):
                     self.fields['bid_amt_{}'.format(bid.id)] = forms.DecimalField(
                         decimal_places=2, max_digits=20, required=False, min_value=0,
                         widget=tracker.widgets.NumberInput(attrs={'class': 'form-control bid-amount', 'step': '0.01',
-                                                                  'placeholder': '$'}))
+                                                                  'placeholder': '$', 'min': '0'}))
 
                 # If this is a user-options bid war parent, add an extra field for new option value.
                 if bid.allowuseroptions:
@@ -167,7 +167,7 @@ class DonationBidFormV2(forms.Form):
                         self.fields['bid_amt_{}'.format(option.id)] = forms.DecimalField(
                             decimal_places=2, max_digits=20, required=False, min_value=0,
                             widget=tracker.widgets.NumberInput(attrs={'class': 'form-control bid-amount',
-                                                                      'step': '0.01', 'placeholder': '$'}))
+                                                                      'step': '0.01', 'placeholder': '$', 'min': '0'}))
 
     def clean(self):
         cleaned_data = super().clean()
