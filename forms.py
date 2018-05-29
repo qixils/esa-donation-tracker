@@ -13,6 +13,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import User
 from django.contrib.auth.tokens import default_token_generator
 from django.core import validators
+from django.core.exceptions import NON_FIELD_ERRORS
 from django.forms import formset_factory, modelformset_factory
 from django.utils import timezone
 from django.utils.html import format_html
@@ -116,13 +117,98 @@ class DonationEntryForm(forms.Form):
             initial='CURR', choices=models.Donation._meta.get_field('requestedsolicitemail').choices, label='Charity Email Opt In')
 
     def clean(self):
-        if self.cleaned_data['requestedvisibility'] == 'ALIAS' and not self.cleaned_data['requestedalias']:
+        if self.cleaned_data.get('requestedvisibility') == 'ALIAS' and not self.cleaned_data.get('requestedalias'):
             raise forms.ValidationError(
                 _("Must specify an alias with 'ALIAS' visibility"))
-        if self.cleaned_data['requestedalias'] and self.cleaned_data['requestedalias'].lower() == 'anonymous':
+        if self.cleaned_data.get('requestedalias') and self.cleaned_data['requestedalias'].lower() == 'anonymous':
             self.cleaned_data['requestedalias'] = ''
             self.cleaned_data['requestedvisibility'] = 'ANON'
         return self.cleaned_data
+
+
+class DonationEntryFormV2(DonationEntryForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Use a shorter label for the donation amount field to fit better in the revamped layout.
+        self.fields['amount'].label = 'Donation Amount'
+        # Make visibility and solicit email fields optional since we don't show them for this form.
+        self.fields['requestedvisibility'].required = False
+        self.fields['requestedsolicitemail'].required = False
+
+
+class DonationBidFormV2(forms.Form):
+    """Revamped version of the bid selection form to allow for selecting all bids at once on new donate page layout."""
+
+    def __init__(self, amount=None, bids=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.amount = amount
+        self.bids = bids
+
+        # Build form fields
+        if self.bids:
+            for bid in self.bids:
+                # If this is a target the user can select, add the amount field.
+                if bid.allowuseroptions or bid.istarget:
+                    self.fields['bid_amt_{}'.format(bid.id)] = forms.DecimalField(
+                        decimal_places=2, max_digits=20, required=False, min_value=0,
+                        widget=tracker.widgets.NumberInput(attrs={'class': 'form-control bid-amount', 'step': '0.01',
+                                                                  'placeholder': '$'}))
+
+                # If this is a user-options bid war parent, add an extra field for new option value.
+                if bid.allowuseroptions:
+                    self.fields['bid_new_option_name_{}'.format(bid.id)] = forms.CharField(
+                        max_length=models.Bid._meta.get_field('name').max_length, required=False,
+                        widget=forms.widgets.TextInput(attrs={'class': 'form-control bid-value',
+                                                              'placeholder': 'Enter New Value'}))
+
+                # Add amount fields for any bid war options.
+                for option in bid.options.all():
+                    if option.istarget:
+                        self.fields['bid_amt_{}'.format(option.id)] = forms.DecimalField(
+                            decimal_places=2, max_digits=20, required=False, min_value=0,
+                            widget=tracker.widgets.NumberInput(attrs={'class': 'form-control bid-amount',
+                                                                      'step': '0.01', 'placeholder': '$'}))
+
+    def clean(self):
+        cleaned_data = super().clean()
+        errors = {}
+
+        if self.bids:
+            for bid in self.bids:
+                # If user is entering a new option, both the amount and value must be present.
+                if bid.allowuseroptions:
+                    amt_field = 'bid_amt_{}'.format(bid.id)
+                    opt_field = 'bid_new_option_name_{}'.format(bid.id)
+
+                    if self.cleaned_data.get(amt_field) and not self.cleaned_data.get(opt_field):
+                        errors[opt_field] = "{} -- {}: New value must be specified".format(
+                            bid.speedrun.name, bid.name)
+                    elif self.cleaned_data.get(opt_field) and not self.cleaned_data.get(amt_field):
+                        errors[amt_field] = "{} -- {}: Amount for new value must be specified".format(
+                            bid.speedrun.name, bid.name)
+
+            # Make sure total bid amount doesn't exceed the donation amount.
+            if self.amount is not None:
+                bid_total = Decimal('0.00')
+
+                for bid in self.bids:
+                    amt_field = 'bid_amt_{}'.format(bid.id)
+                    if (bid.allowuseroptions or bid.istarget) and self.cleaned_data.get(amt_field, None):
+                        bid_total += self.cleaned_data[amt_field]
+
+                    # Add amount fields for any bid war options.
+                    for option in bid.options.all():
+                        option_amt_field = 'bid_amt_{}'.format(option.id)
+                        if option.istarget and self.cleaned_data.get(option_amt_field, None):
+                            bid_total += self.cleaned_data[option_amt_field]
+
+                if bid_total > self.amount:
+                    errors[NON_FIELD_ERRORS] = forms.ValidationError("Total bid amount cannot exceed donation amount")
+
+        if errors:
+            raise forms.ValidationError(errors)
+
+        return cleaned_data
 
 
 class DonationBidForm(forms.Form):

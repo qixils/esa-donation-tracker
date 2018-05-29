@@ -1,3 +1,4 @@
+import collections
 import datetime
 import json
 import random
@@ -17,6 +18,7 @@ from django.http import HttpResponse, Http404
 from django.urls import reverse
 from django.views.decorators.cache import never_cache, cache_page
 from django.views.decorators.csrf import csrf_exempt
+from django.views.generic import TemplateView, FormView
 
 import tracker.filters as filters
 import tracker.forms as forms
@@ -42,7 +44,7 @@ def paypal_return(request):
 
 @csrf_exempt
 @cache_page(300)
-def donate(request, event):
+def donate_orig(request, event):
   event = viewutil.get_event(event)
   if event.locked:
     raise Http404
@@ -166,6 +168,139 @@ def donate(request, event):
     'prizes': prizes,
     'site_name': settings.SITE_NAME,
   })
+
+
+class DonateViewV2(TemplateView):
+  template_name = 'tracker/donate_v2.html'
+
+  def get_context_data(self, **kwargs):
+    context = super().get_context_data(**kwargs)
+
+    # Get event
+    event = viewutil.get_event(context['event'])
+    if event.locked:
+      raise Http404
+    context['event'] = event
+
+    # Base donation info form.
+    context['commentform'] = forms.DonationEntryFormV2(event=event, data=self.request.POST or None)
+
+    # Get donation amount if form is valid.
+    if self.request.method == 'POST' and context['commentform'].is_valid():
+      amount = context['commentform'].cleaned_data['amount']
+    else:
+      amount = Decimal('0.00')
+
+    # Bid selection form
+    bids = filters.run_model_query(
+      'bid', {'state': 'OPENED', 'event': event.id}, user=self.request.user).select_related(
+      'speedrun').prefetch_related('options')
+    context['bidsform'] = forms.DonationBidFormV2(amount=amount, bids=bids, data=self.request.POST or None)
+    context['hasBids'] = bids.count() > 0
+    context['bids'] = bids
+
+    # Group bids by run for the revamped donate page display.
+    bids_by_run = collections.OrderedDict()
+    for bid in bids:
+      if bid.speedrun not in bids_by_run:
+        bids_by_run[bid.speedrun] = []
+
+      bid.options_list = list(bid.options.all())
+      bids_by_run[bid.speedrun].append(bid)
+
+    context['bids_by_run'] = []
+    for run, bids in bids_by_run.items():
+      run.bid_list = bids
+      context['bids_by_run'].append(run)
+
+    return context
+
+  def post(self, request, *args, **kwargs):
+    context = self.get_context_data(**kwargs)
+    comment_form = context['commentform']
+    bids_form = context['bidsform']
+
+    if comment_form.is_valid() and bids_form.is_valid():
+      with transaction.atomic():
+        # Make the new donation records.
+        donation = models.Donation(amount=comment_form.cleaned_data['amount'],
+                                   timereceived=pytz.utc.localize(datetime.datetime.utcnow()), domain='PAYPAL',
+                                   domainId=str(random.getrandbits(128)), event=context['event'],
+                                   testdonation=context['event'].usepaypalsandbox)
+        if comment_form.cleaned_data['comment']:
+          donation.comment = comment_form.cleaned_data['comment']
+          donation.commentstate = "PENDING"
+        donation.requestedvisibility = "ALIAS"
+        donation.requestedalias = comment_form.cleaned_data['requestedalias']
+        donation.requestedemail = comment_form.cleaned_data['requestedemail']
+        donation.requestedsolicitemail = "CURR"
+        donation.currency = context['event'].paypalcurrency
+        donation.save()
+
+        # Make bid records for the donation.
+        for bid in context['bids']:
+          amt_field = 'bid_amt_{}'.format(bid.id)
+
+          # Check if the user is adding a new option for a bid war.
+          if bid.allowuseroptions:
+            opt_field = 'bid_new_option_name_{}'.format(bid.id)
+
+            if bids_form.cleaned_data.get(amt_field) and bids_form.cleaned_data.get(opt_field):
+              try:
+                option = models.Bid.objects.get(event=bid.event, speedrun=bid.speedrun,
+                                                name__iexact=bids_form.cleaned_data[opt_field], parent=bid)
+              except models.Bid.DoesNotExist:
+                option = models.Bid.objects.create(event=bid.event, speedrun=bid.speedrun,
+                                                   name=bids_form.cleaned_data[opt_field], parent=bid,
+                                                  state='PENDING', istarget=True)
+              donation.bids.add(models.DonationBid(bid=option, amount=Decimal(bids_form.cleaned_data[amt_field])),
+                                bulk=False)
+
+          # Otherwise, check if this bid is a target.
+          elif bid.istarget:
+            if bids_form.cleaned_data.get(amt_field):
+              donation.bids.add(models.DonationBid(bid=bid, amount=Decimal(bids_form.cleaned_data[amt_field])),
+                                bulk=False)
+
+          # Check any of its children if they are targets.
+          for option in bid.options.all():
+            opt_amt_field = 'bid_amt_{}'.format(option.id)
+            if option.istarget and bids_form.cleaned_data.get(opt_amt_field):
+              donation.bids.add(models.DonationBid(bid=option, amount=Decimal(bids_form.cleaned_data[opt_amt_field])),
+                                bulk=False)
+
+        donation.full_clean()
+        donation.save()
+
+      # Do the PayPal thing.
+      paypal_dict = {
+        "amount": str(donation.amount),
+        "cmd": "_donations",
+        "business": donation.event.paypalemail,
+        "item_name": donation.event.receivername,
+        "notify_url": request.build_absolute_uri(reverse('tracker:ipn')),
+        "return_url": request.build_absolute_uri(reverse('tracker:paypal_return')),
+        "cancel_return": request.build_absolute_uri(reverse('tracker:donate', args=[context['event'].short])),
+        "custom": str(donation.id) + ":" + donation.domainId,
+        "currency_code": donation.event.paypalcurrency,
+        "no_shipping": 0,
+      }
+      # Create the form instance
+      form = forms.PayPalDonationsForm(button_type="donate", sandbox=donation.event.usepaypalsandbox,
+                                       initial=paypal_dict)
+      context = {"event": donation.event, "form": form}
+      return views_common.tracker_response(request, "tracker/paypal_redirect.html", context)
+
+    return self.render_to_response(context)
+
+
+# Are we using the original view page or the revamped version?
+# Define donate view based on this setting so the URLs
+if settings.USE_NEW_DONATE_LAYOUT:
+  donate = DonateViewV2.as_view()
+else:
+  donate = donate_orig
+
 
 @csrf_exempt
 @never_cache
