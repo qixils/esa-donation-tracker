@@ -1,0 +1,12 @@
+{% load donation_tags %}
+
+{% with bid_id=bid_id|stringformat:"s" %}
+    {% with field_name="bid_amt_"|add:bid_id %}
+        {% with field=bidsform|getattribute:field_name %}
+{#            {{ field.errors }}#}
+            <div class="col-sm-3">
+                {{ field }}
+            </div>
+        {% endwith %}
+    {% endwith %}
+{% endwith %}

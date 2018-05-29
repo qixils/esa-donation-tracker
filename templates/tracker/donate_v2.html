@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% load donation_tags %}
+{% load i18n %}
+{% load bootstrap3 %}
+{% load staticfiles %}
+
+{% block title %}
+    {{ event.name|title }} -- Donate
+{% endblock %}
+
+{% block head %}
+    <link rel="shortcut icon" type="image/png" href="{% static 'favicon.ico' %}"/>
+    <link rel="stylesheet" type="text/css" href="{% static "donate_v2.css" %}"/>
+    {# Include any event-specific CSS based on the short slug name. #}
+    {% with 'event_css/'|add:event.short|add:'.css' as css_url %}
+        <link rel="stylesheet" href="{% static css_url %}" type="text/css"/>
+    {% endwith %}
+
+    <script type="text/javascript">
+        function get_amount() {
+            let amount = Number($("#iDonationAmount").val());
+            if (isNaN(amount)) {
+                amount = Number(0);
+            }
+            return amount;
+        }
+
+        function get_bid_total() {
+            let bid_total = Number(0);
+            $(".bid-amount").each(function () {
+                let val = Number($(this).val());
+                if (!isNaN(val)) {
+                    bid_total += val;
+                }
+            });
+            return bid_total;
+        }
+
+        // Calculate total bid amount and display on the total button.
+        function calculate_bid_total() {
+            let amount = get_amount();
+            let bid_total = get_bid_total();
+            let e = $(".bid-total");
+            e.text("$" + bid_total.toFixed(2) + "/$" + amount.toFixed(2));
+            if (bid_total > amount) {
+                e.addClass("alert-danger");
+            } else {
+                e.removeClass("alert-danger");
+            }
+        }
+
+        // Make sure the bid total doesn't exceed the donation total.
+        function validate_donation_form() {
+            let amount = get_amount();
+            let bid_total = get_bid_total();
+            if (bid_total > amount) {
+                alert("Total bid amount cannot exceed donation amount");
+                return false;
+            }
+            return true;
+        }
+
+        // Load formset stuff when the page is ready.
+        $(document).ready(function () {
+            // Bid total show/hide button.
+            $(".bid-total-button").click(function () {
+                let total = $(".bid-total");
+                total.toggle();
+                if (total.is(":visible")) {
+                    $(this).removeClass("bid-total-button-closed").addClass("bid-total-button-opened");
+                    $(".bid-total-panel").removeClass("bid-total-panel-closed");
+                } else {
+                    $(this).removeClass("bid-total-button-opened").addClass("bid-total-button-closed");
+                    $(".bid-total-panel").addClass("bid-total-panel-closed");
+                }
+            });
+
+            // Update bid total box.
+            $("#iDonationAmount").change(calculate_bid_total);
+            $(".bid-amount").change(calculate_bid_total);
+
+            // Initial load.
+            calculate_bid_total();
+        });
+    </script>
+{% endblock %}
+
+{% block nav %}
+{% endblock %}
+
+{% block content %}
+    <div class="container donate-container">
+        <h1 class="text-center">Donate to {{ event.name }}</h1>
+        <div id="preamble" class="row">
+            <p>Using e-check donations are not recommended, as your donation will be delayed by several days</p>
+            <p>Please refrain from offensive language or hurtful remarks in your donation message</p>
+            <p>All donations made during {{ event.name }} will go directly to the <span class="charity-name">{{ event.receivername }}</span></p>
+        </div>
+    </div>
+
+    <form id="bidsform" action="{% url 'tracker:donate' event.short %}" method="post" class="form-horizontal"
+          onsubmit="return validate_donation_form();">
+        {% csrf_token %}
+        <div class="container">
+            {% bootstrap_form_errors commentform layout='inline' error_types='non_field_errors' %}
+            {% bootstrap_form_errors bidsform layout='inline' error_types='all' %}
+            <div id="donate-form-container" class="row">
+                <div class="col-md-6 donate-container donate-form-half donate-form-half-left">
+                    {% bootstrap_field commentform.amount layout='horizontal' horizontal_label_class='col-md-5' horizontal_field_class='col-md-7' %}
+{#                    {% bootstrap_field commentform.requestedvisibility layout='horizontal' horizontal_label_class='col-md-5' horizontal_field_class='col-md-7' %}#}
+                    {% bootstrap_field commentform.requestedalias layout='horizontal' horizontal_label_class='col-md-5' horizontal_field_class='col-md-7' %}
+                    {% bootstrap_field commentform.requestedemail layout='horizontal' horizontal_label_class='col-md-5' horizontal_field_class='col-md-7' %}
+{#                    {% bootstrap_field commentform.requestedsolicitemail layout='horizontal' horizontal_label_class='col-md-5' horizontal_field_class='col-md-7' %}#}
+                </div>
+                <div class="col-md-6 donate-container donate-form-half donate-form-half-right">
+                    {# Draw bid tree #}
+                    {% if hasBids %}
+                        <div class="panel-group" id="accordion">
+                            {% for run in bids_by_run %}
+                                <div class="panel panel-default">
+                                    <div class="panel-heading">
+                                        <h4 class="panel-title">
+                                            <a data-toggle="collapse" data-parent="#accordion"
+                                               href="#collapse-run-{{ run.id }}">{{ run.name }}</a>
+                                        </h4>
+                                    </div>
+                                    <div id="collapse-run-{{ run.id }}" class="panel-collapse collapse">
+                                        <div class="panel-body">
+                                            <div class="panel-group" id="accordion-run-{{ run.id }}">
+                                                {% for bid in run.bid_list %}
+                                                    <div class="panel panel-default">
+                                                        {% if bid.options_list or bid.allowuseroptions %}
+                                                            <div class="panel-heading">
+                                                                <h4 class="panel-title">
+                                                                    <a data-toggle="collapse"
+                                                                       data-parent="#accordion-run-{{ run.id }}"
+                                                                       href="#collapse-bid-{{ bid.id }}">{{ bid.name }}</a>
+                                                                </h4>
+                                                            </div>
+                                                            <div id="collapse-bid-{{ bid.id }}"
+                                                                 class="panel-collapse collapse">
+                                                                <ul class="list-group">
+                                                                    {% for option in bid.options_list %}
+                                                                        <li class="list-group-item">
+                                                                            <div class="form-group bid-amount-group">
+                                                                                {% include "tracker/partials/donate_v2_amount_field.html" with bid_id=option.id %}
+                                                                                <div class="col-sm-9">
+                                                                                    <span class="bid-text">{{ option.name }} - {{ option.total|money }}</span>
+                                                                                </div>
+                                                                            </div>
+                                                                        </li>
+                                                                    {% endfor %}
+                                                                    {% if bid.allowuseroptions %}
+                                                                        <li class="list-group-item">
+                                                                            <div class="form-group bid-amount-group">
+                                                                                {% include "tracker/partials/donate_v2_new_option.html" with bid_id=bid.id %}
+                                                                            </div>
+                                                                        </li>
+                                                                    {% endif %}
+                                                                </ul>
+                                                            </div>
+                                                        {% else %}
+                                                            <div class="panel-heading">
+                                                                <div class="form-group bid-amount-group">
+                                                                    {% include "tracker/partials/donate_v2_amount_field.html" with bid_id=bid.id %}
+                                                                    <div class="col-sm-9">
+                                                                        <span class="bid-text">{{ bid.name }} - {{ bid.total|money }}/{{ bid.goal|money }}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        {% endif %}
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="container bid-total-container">
+            <div class="panel panel-default bid-total-panel">
+                {% if hasBids %}
+                    <button type="button" class="btn bid-total-button bid-total-button-opened"></button>
+                    <span class="bid-total">$0.00/$0.00</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="container donate-container">
+            {% bootstrap_field commentform.comment %}
+            <div class="submit-container">
+                <input type="submit" value="Submit" class="submit"/>
+            </div>
+        </div>
+    </form>
+
+{% endblock %}

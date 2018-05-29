@@ -1,0 +1,16 @@
+{% load donation_tags %}
+
+{% with bid_id=bid_id|stringformat:"s" %}
+    {% with amt_field_name="bid_amt_"|add:bid_id opt_field_name="bid_new_option_name_"|add:bid_id %}
+        {% with amt_field=bidsform|getattribute:amt_field_name opt_field=bidsform|getattribute:opt_field_name %}
+{#            {{ amt_field.errors }}#}
+{#            {{ opt_field.errors }}#}
+            <div class="col-sm-3">
+                {{ amt_field }}
+            </div>
+            <div class="col-sm-9">
+                {{ opt_field }}
+            </div>
+        {% endwith %}
+    {% endwith %}
+{% endwith %}
