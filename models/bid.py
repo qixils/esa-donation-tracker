@@ -29,7 +29,7 @@ class Bid(mptt.models.MPTTModel):
   event = models.ForeignKey('Event', on_delete=models.PROTECT, verbose_name='Event', null=True, blank=True, related_name='bids', help_text='Required for top level bids if Run is not set')
   speedrun = models.ForeignKey('SpeedRun', on_delete=models.PROTECT, verbose_name='Run', null=True, blank=True, related_name='bids')
   parent = mptt.models.TreeForeignKey('self', on_delete=models.PROTECT, verbose_name='Parent', editable=False, null=True, blank=True, related_name='options')
-  name = models.CharField(max_length=64)
+  name = models.CharField(max_length=256)
   state = models.CharField(max_length=32,choices=(('PENDING', 'Pending'), ('DENIED', 'Denied'), ('HIDDEN', 'Hidden'), ('OPENED','Opened'), ('CLOSED','Closed')),default='OPENED')
   description = models.TextField(max_length=1024,blank=True)
   shortdescription = models.TextField(max_length=256,blank=True,verbose_name='Short Description',help_text="Alternative description text to display in tight spaces")
@@ -197,7 +197,7 @@ def DonationBidParentUpdate(sender, instance, created, raw, **kwargs):
 
 class BidSuggestion(models.Model):
   bid = models.ForeignKey('Bid', related_name='suggestions', null=False,on_delete=models.PROTECT)
-  name = models.CharField(max_length=64, blank=False, null=False, verbose_name="Name")
+  name = models.CharField(max_length=256, blank=False, null=False, verbose_name="Name")
   class Meta:
     app_label = 'tracker'
     ordering = ['bid__event__date', 'bid__speedrun__starttime', 'bid__parent__name', 'bid__name', 'name' ]
