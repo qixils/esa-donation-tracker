@@ -230,7 +230,8 @@ class DonateViewV2(TemplateView):
         if comment_form.cleaned_data['comment']:
           donation.comment = comment_form.cleaned_data['comment']
           donation.commentstate = "PENDING"
-        donation.requestedvisibility = "ALIAS"
+        # Use "alias only" visibility if alias is provided, otherwise use current value (default anonymous).
+        donation.requestedvisibility = "ALIAS" if comment_form.cleaned_data['requestedalias'] else "CURR"
         donation.requestedalias = comment_form.cleaned_data['requestedalias']
         donation.requestedemail = comment_form.cleaned_data['requestedemail']
         donation.requestedsolicitemail = "CURR"
