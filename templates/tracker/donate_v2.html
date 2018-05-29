@@ -9,7 +9,6 @@
 {% endblock %}
 
 {% block head %}
-    <link rel="shortcut icon" type="image/png" href="{% static 'favicon.ico' %}"/>
     <link rel="stylesheet" type="text/css" href="{% static "donate_v2.css" %}"/>
     {# Include any event-specific CSS based on the short slug name. #}
     {% with 'event_css/'|add:event.short|add:'.css' as css_url %}
