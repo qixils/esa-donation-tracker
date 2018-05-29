@@ -244,3 +244,11 @@ def mail_name(donor):
         return donor.alias
     return 'Occupant'
 
+
+@register.filter('getattribute')
+def getattribute(value, arg):
+    """Gets an attribute of an object dynamically from a string name"""
+    if hasattr(value, str(arg)):
+        return getattr(value, arg)
+    else:
+        return value[arg]
