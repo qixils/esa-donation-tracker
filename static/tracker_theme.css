@@ -35,3 +35,7 @@ th, td {
     background-color: transparent;
     border: 1px solid black;
 }
+
+.text-gdq-black {
+    color: #269abc;
+}
