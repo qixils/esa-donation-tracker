@@ -1,10 +1,10 @@
 @import url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css");
 
 body {
-    color: black;
+    color: white;
     font-family: Arial, sans-serif;
     font-size: 14pt;
-    background-color: lightgrey;
+    background-color: #272b30;
 }
 
 h1 {
@@ -12,7 +12,7 @@ h1 {
 }
 
 label {
-    color: black !important;
+    color: white !important;
     font-weight: normal;
 }
 
@@ -25,14 +25,27 @@ a, a:hover, a:visited, a:link, a:active {
 }
 
 .donate-container {
-    background-color: white;
-    border: 5px solid darkgray;
+    background-color: #2e3338;
+    border: 5px solid #269abc;
     padding: 1em;
     margin-bottom: 2em;
 }
 
 .donate-form-half {
     margin-bottom: 0;
+}
+
+.panel-heading {
+    background-color: #353a41 !important;
+    color: white !important;
+}
+
+.panel-body, .list-group-item {
+    background-color: #2e3338 !important;
+}
+
+.panel-default, .panel-heading, .panel-title, .panel-body, .list-group, .list-group-item {
+    border-color: #269abc !important;
 }
 
 @media screen and (min-width: 992px) {
@@ -74,8 +87,8 @@ a, a:hover, a:visited, a:link, a:active {
     border: 1px solid darkgray;
     width: 5em;
     height: 2em;
-    background-color: white;
-    color: black;
+    background-color: #272b30;
+    /*color: black;*/
     text-align: center;
 }
 
@@ -103,9 +116,15 @@ a, a:hover, a:visited, a:link, a:active {
 }
 
 .bid-total-panel {
+    background-color: #353a41;
     display: inline-block;
     position: relative;
     top: -60px;
+}
+
+.bid-total-button {
+    font-family: 'FontAwesome';
+    background-color: grey;
 }
 
 .bid-total-button-opened::after {

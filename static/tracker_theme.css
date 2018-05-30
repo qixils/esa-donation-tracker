@@ -1,0 +1,37 @@
+body {
+    background-color: #272b30;
+    color: white;
+}
+
+.navbar-nav li a {
+    color: #269abc !important;
+}
+
+.navbar-nav li a:hover {
+    color: white !important;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) {
+    background-color: #2e3338;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > td > button {
+    background-color: #353a41;
+}
+
+.table-striped > tbody > tr:nth-of-type(even) {
+    background-color: #353a41;
+}
+
+.table-striped > tbody > tr:nth-of-type(even) > td > button {
+    background-color: #2e3338;
+}
+
+th, td {
+    border-top: 1px solid #1c1e22 !important;
+}
+
+.table .table {
+    background-color: transparent;
+    border: 1px solid black;
+}
