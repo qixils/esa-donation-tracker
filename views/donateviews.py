@@ -205,7 +205,7 @@ class DonateViewV2(TemplateView):
       if bid.speedrun not in bids_by_run:
         bids_by_run[bid.speedrun] = []
 
-      bid.options_list = list(bid.options.all())
+      bid.options_list = list(bid.options.filter(state='OPENED'))
       bids_by_run[bid.speedrun].append(bid)
 
     context['bids_by_run'] = []
