@@ -520,7 +520,7 @@ class PrizeWinnerAdmin(CustomModelAdmin):
   readonly_fields = ['winner_email', 'accept_url', 'winner_address']
   fieldsets = [
     (None, { 'fields': ['prize', 'winner', 'winner_email', 'emailsent', 'pendingcount', 'acceptcount', 'declinecount', 'acceptdeadline', 'accept_url'], }),
-    ('Shipping Info', { 'fields': ['acceptemailsentcount', 'shippingstate', 'winner_address', 'shippingemailsent',
+    ('Shipping Info', { 'fields': ['acceptemailsentcount', 'shippingstate', 'winner_address', 'winnernotes', 'shippingemailsent',
                                    'trackingnumber', 'shippingcost', 'shipping_receipt_url'] })
   ]
 
