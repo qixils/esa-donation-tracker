@@ -39,11 +39,11 @@ Also, please enter/confirm your shipping address.
 {% form_innards form showrequired=False use_bootstrap=True %}
 
 {% if prizeWin.pendingcount > 1 %}
-<input type="submit" name="accept" value="Accept">
-<input type="submit" name="deny" value="Decline All">
+<input type="submit" class="btn btn-default" name="accept" value="Accept">
+<input type="submit" class="btn btn-default" name="deny" value="Decline All">
 {% else %}
-<input type="submit" name="accept" value="Accept">
-<input type="submit" name="deny" value="Decline">
+<input type="submit" class="btn btn-default" name="accept" value="Accept">
+<input type="submit" class="btn btn-default" name="deny" value="Decline">
 {% endif %}
 <br />
 <br />
