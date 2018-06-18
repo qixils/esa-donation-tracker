@@ -512,7 +512,7 @@ class PrizeWinnerInline(CustomStackedInline):
 class PrizeWinnerAdmin(CustomModelAdmin):
   form = PrizeWinnerForm
   search_fields = ['prize__name', 'winner__email']
-  list_display = ['__str__', 'prize', 'prize_event', 'winner', 'pendingcount', 'acceptcount', 'declinecount',
+  list_display = ['__str__', 'prize', 'prize_event', 'winner', 'winner_email', 'pendingcount', 'acceptcount', 'declinecount',
                   'shippingstate', 'prize_requiresshipping', 'accept_url']
   list_editable = ('pendingcount', 'acceptcount', 'declinecount', 'shippingstate')
   list_filter = ['prize__event', 'shippingstate', 'prize__requiresshipping', PrizeWinnerListFilter]
