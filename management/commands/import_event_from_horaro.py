@@ -41,13 +41,12 @@ class Command(commandutil.TrackerCommand):
         columns = get_columns(data['schedule'])
 
         order=0
-        for (raw_run, peek) in setup_peek(raw_runs):
+        previous = None
+        for raw_run in raw_runs:
             order += 1
-            setup_time = base_setup_time
-            if peek != None and 'options' in peek and 'setup' in peek['options']:
-                setup_time = parse_duration(peek['options']['setup']).seconds * 1000
-
+            setup_time = get_SetupTime(previous)
             get_run(event, columns, order, raw_run, setup_time)
+            previous = raw_run
 
         if options["safe"]:
             print("Would have deleted:")
@@ -179,7 +178,8 @@ def parse_duration(duration):
     elif duration.endswith('d'):
         return timedelta(days=num)
 
-def setup_peek(raw_runs):
-    iterator, peeker = tee(iter(raw_runs))
-    next(peeker)
-    return izip_longest(iterator, peeker, fillvalue=None)
+def getSetupTime(previous):
+    setup_time = base_setup_time
+    if previous != None and 'options' in previous and 'setup' in previous['options']:
+        setup_time = parse_duration(previous['options']['setup']).seconds * 1000
+    return setup_time
