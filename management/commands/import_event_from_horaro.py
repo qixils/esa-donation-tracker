@@ -169,6 +169,6 @@ def parse_duration(duration):
 
 def get_setup_time(previous, base_setup_time=600000):
     setup_time = base_setup_time
-    if previous != None and 'options' in previous and 'setup' in previous['options']:
+    if previous != None and 'options' in previous and previous['options'] != None and 'setup' in previous['options']:
         setup_time = parse_duration(previous['options']['setup']).seconds * 1000
     return setup_time
