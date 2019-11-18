@@ -131,17 +131,6 @@ def get_run(event, columns, order, json_run, setup_time = 0):
                     if runner != None:
                         run.runners.add(runner)
                         run.save()
-            elif event.short.startswith('uksg'):
-                #UKSG mode
-                raw_runners = runner_column.split("&")
-                raw_runner_streams = json_run['data'][columns["Twitch Username(s)"]].split('&')
-                for (raw_runner,raw_twitch) in zip(raw_runners, raw_runner_streams):
-                    runner_name = raw_runner.strip()
-                    runner_stream = "https://twitch.tv/" + raw_twitch.strip()
-                    runner = get_runner(runner_name, runner_stream)
-                    if runner != None:
-                        run.runners.add(runner)
-                        run.save()
 
         return run
     return None
