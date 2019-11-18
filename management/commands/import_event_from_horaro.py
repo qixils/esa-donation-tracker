@@ -41,12 +41,10 @@ class Command(commandutil.TrackerCommand):
         columns = get_columns(data['schedule'])
 
         order=0
-        previous = None
         for raw_run in raw_runs:
             order += 1
-            setup_time = get_setup_time(previous, base_setup_time)
+            setup_time = get_setup_time(raw_run, base_setup_time)
             get_run(event, columns, order, raw_run, setup_time)
-            previous = raw_run
 
         if options["safe"]:
             print("Would have deleted:")
@@ -86,7 +84,7 @@ def get_run(event, columns, order, json_run, setup_time = 0):
     name = name[:64] #Truncate becuase DB limitation
 
     category = json_run['data'][columns["Category"]] or "Sleep%"
-    print(name, category)
+    print(name, category, setup_time)
 
     run = None
     try:
