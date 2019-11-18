@@ -44,7 +44,7 @@ class Command(commandutil.TrackerCommand):
         previous = None
         for raw_run in raw_runs:
             order += 1
-            setup_time = get_SetupTime(previous)
+            setup_time = get_setup_time(previous)
             get_run(event, columns, order, raw_run, setup_time)
             previous = raw_run
 
@@ -167,7 +167,7 @@ def parse_duration(duration):
     elif duration.endswith('d'):
         return timedelta(days=num)
 
-def getSetupTime(previous):
+def get_setup_time(previous):
     setup_time = base_setup_time
     if previous != None and 'options' in previous and 'setup' in previous['options']:
         setup_time = parse_duration(previous['options']['setup']).seconds * 1000
