@@ -5,6 +5,7 @@ import logging
 from rest_framework import serializers
 
 from tracker.models.event import Event, Runner, SpeedRun
+from tracker.models.donation import Donation
 
 log = logging.getLogger(__name__)
 
@@ -50,3 +51,26 @@ class SpeedRunSerializer(serializers.ModelSerializer):
         model = SpeedRun
         fields = ('type', 'id', 'event', 'name', 'display_name', 'description', 'category', 'console', 'runners',
                   'commentators', 'starttime', 'endtime', 'order', 'run_time')
+
+class DonationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Donation
+        fields = (
+            'id',
+            'donor', 
+            'event',
+            'domain', 
+            'domainId', 
+            'twitchusername', 
+            'transactionstate', 
+            'bidstate', 
+            'readstate', 
+            'commentstate', 
+            'amount', 
+            'fee', 
+            'currency', 
+            'timereceived',
+            'comment',
+            'modcomment',
+            'testdonation',
+        )

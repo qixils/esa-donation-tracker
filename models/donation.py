@@ -46,6 +46,7 @@ class Donation(models.Model):
   event = models.ForeignKey('Event',on_delete=models.PROTECT,default=LatestEvent)
   domain = models.CharField(max_length=255,default='LOCAL',choices=DonationDomainChoices)
   domainId = models.CharField(max_length=160,unique=True,editable=False,blank=True)
+  twitchusername = models.CharField(max_length=64, null=True, blank=False, verbose_name='Twitch Username (For CrowdControl coins)')
   transactionstate = models.CharField(max_length=64,db_index=True,default='PENDING', choices=(('PENDING', 'Pending'), ('COMPLETED', 'Completed'), ('CANCELLED', 'Cancelled'), ('FLAGGED', 'Flagged')),verbose_name='Transaction State')
   bidstate = models.CharField(max_length=255,db_index=True,default='PENDING',choices=(('PENDING', 'Pending'), ('IGNORED', 'Ignored'), ('PROCESSED', 'Processed'), ('FLAGGED', 'Flagged')),verbose_name='Bid State')
   readstate = models.CharField(max_length=255,db_index=True,default='PENDING',choices=(('PENDING', 'Pending'), ('READY', 'Ready to Read'), ('IGNORED', 'Ignored'), ('READ', 'Read'), ('FLAGGED', 'Flagged')),verbose_name='Read State')

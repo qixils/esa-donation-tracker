@@ -1,4 +1,4 @@
-import paypal
+import paypal.standard.forms
 import re
 from decimal import *
 import collections
@@ -37,6 +37,7 @@ import tracker.widgets
 from tracker.templatetags.donation_tags import address as address_template
 
 __all__ = [
+    'PayPalDonationsForm',
     'UsernameForm',
     'DonationCredentialsForm',
     'DonationEntryForm',
@@ -62,6 +63,18 @@ __all__ = [
     'PrizeAcceptanceWithAddressForm',
     'PrizeShippingFormSet',
 ]
+
+class PayPalDonationsForm(paypal.standard.forms.PayPalPaymentsForm):
+    """Override default payments form to default to donate button, and support test mode setting per event.
+    This removes the need for a custom fork of django-paypal.
+    """
+
+    def __init__(self, button_type="donate", sandbox=True, *args, **kwargs):
+        super(PayPalDonationsForm, self).__init__(button_type, *args, **kwargs)
+        self.sandbox = sandbox
+
+    def test_mode(self):
+        return self.sandbox
 
 
 class UsernameForm(forms.Form):
@@ -100,6 +113,9 @@ class DonationEntryForm(forms.Form):
             minDonationAmount), widget=tracker.widgets.NumberInput(attrs={'id': 'iDonationAmount', 'min': str(minDonationAmount), 'step': '0.01'}), required=True)
         self.fields['comment'] = forms.CharField(
             widget=forms.Textarea, required=False)
+        self.fields['twitchusername'] = forms.CharField(
+            max_length=64, label='Twitch Username (for CrowdControl coins)', required=False
+        )
         self.fields['requestedvisibility'] = forms.ChoiceField(
             initial='ALIAS', choices=models.Donation._meta.get_field('requestedvisibility').choices, label='Name Visibility')
         self.fields['requestedalias'] = forms.CharField(
@@ -111,6 +127,7 @@ class DonationEntryForm(forms.Form):
         self.fields['acceptprivacypolicy'] = forms.BooleanField(
             required=True, 
             label=mark_safe('I have read and accept the <a href="https://esamarathon.com/privacy" target="_blank">Privacy Policy</a>'))
+
 
     def clean(self):
         if self.cleaned_data['requestedvisibility'] == 'ALIAS' and not self.cleaned_data['requestedalias']:
