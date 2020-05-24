@@ -37,9 +37,11 @@
         {% endif %}
 
         {% if event.id == None %}
-        <p class="center-block col-xs-12 col-md-6">
-            <a class="btn btn-lg btn-warning btn-block" href="{% url 'tracker:index' 'vinter20' %}">Vinterspelen 20</a>
-        </p>
+            {% for event in active_events %}
+                <p class="center-block col-xs-12 col-md-6">
+                    <a class="btn btn-lg btn-warning btn-block" href="{% url 'tracker:index' event.short %}">{{ event.name }}</a>
+                </p>
+            {% endfor%}
         {% endif %}
     </div>
 

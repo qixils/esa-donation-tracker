@@ -51,10 +51,12 @@ def index(request,event=None):
     'donors' : filters.run_model_query('donorcache', eventParams).values('donor').distinct().count(),
   }
 
+  active_events = Event.objects.filter(locked=False)
+
   if 'json' in request.GET:
     return HttpResponse(json.dumps({'count':count,'agg':agg},ensure_ascii=False, cls=serializers.json.DjangoJSONEncoder),content_type='application/json;charset=utf-8')
 
-  return views_common.tracker_response(request, 'tracker/index.html', { 'agg' : agg, 'count' : count, 'event': event })
+  return views_common.tracker_response(request, 'tracker/index.html', { 'agg' : agg, 'count' : count, 'event': event, 'active_events': active_events})
 
 def get_bid_children(bid, bids):
   return sorted((bid_info(child, bids) for child in bids if child.parent_id == bid.id), key=lambda child: -child['total'])
