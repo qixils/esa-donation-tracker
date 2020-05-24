@@ -1,4 +1,5 @@
 from django.conf.urls import include, url
+from django.contrib.auth import views as auth_views
 
 from .views import public, api, donateviews, user, auth
 
@@ -51,12 +52,16 @@ urlpatterns = [
 
     url(r'^user/login/$', auth.login, name='login'),
     url(r'^user/logout/$', auth.logout, name='logout'),
-    url(r'^user/password_reset/$', auth.password_reset, name='password_reset'),
-    url(r'^user/password_reset_done/$', auth.password_reset_done, name='password_reset_done'),
-    url(r'^user/password_reset_confirm/$', auth.password_reset_confirm, name='password_reset_confirm'),
-    url(r'^user/password_reset_complete/$', auth.password_reset_complete, name='password_reset_complete'),
-    url(r'^user/password_change/$', auth.password_change, name='password_change'),
-    url(r'^user/password_change_done/$', auth.password_change_done, name='password_change_done'),
+    
+    url(r'^user/password_reset/done/$', auth_views.password_reset_done, name='password-reset-done'),
+    url(r'^user/password_reset/complete/$', auth_views.password_reset_complete, {}, name='password_reset_complete'),
+    url(r'^reset/(?P<uidb64>[0-9A-Za-z]+)-(?P<token>.+)/$', 'django.contrib.auth.views.password_reset_confirm', name='password_reset_confirm'),
+    #url(r'^password-reset/confirm/(?P<uidb64>[0-9A-Za-z_\-]+)/(?P<token>[0-9A-Za-z]{1,13}-[0-9A-Za-z]{1,20})/$', auth_views.password_reset_confirm,  {"template_name":"tracker/password_reset_confirm.html"}, name='password_reset_confirm'),
+    url(r'^user/password_reset/$', auth_views.password_reset, {'post_reset_redirect': 'tracker:password-reset-done'}, name='password-reset'),
+
+    url(r'^user/password_change_done/$', auth_views.password_change_done, name='password_change_done'),
+    url(r'^user/password_change/$', auth_views.password_change, {'post_change_redirect': 'tracker:password_change_done'}, name='password_change'),
+
     url(r'^user/register/$', auth.register, name='register'),
     url(r'^user/confirm_registration/$', auth.confirm_registration, name='confirm_registration'),
 ]
