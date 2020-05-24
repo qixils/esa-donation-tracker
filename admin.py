@@ -636,10 +636,10 @@ class EventAdmin(CustomModelAdmin):
   list_editable = ['locked']
   readonly_fields = ['scheduleid']
   fieldsets = [
-    (None, { 'fields': ['short', 'name', 'receivername', 'targetamount', 'minimumdonation', 'date', 'timezone', 'locked'] }),
+    (None, { 'fields': ['short', 'name', 'receivername', 'recieverimage', 'targetamount', 'minimumdonation', 'date', 'timezone', 'locked'] }),
     ('Paypal', {
       'classes': ['collapse'],
-      'fields': ['paypalemail', 'usepaypalsandbox', 'paypalcurrency', ]
+      'fields': ['paypalemail', 'usepaypalsandbox', 'paypalcurrency', 'paypalreturntext']
     }),
     ('Donation Autoreply', {
       'classes': ['collapse',],

@@ -123,6 +123,7 @@ class Event(models.Model):
   short = models.CharField(max_length=64,unique=True)
   name = models.CharField(max_length=128)
   receivername = models.CharField(max_length=128,blank=True,null=False,verbose_name='Receiver Name')
+  recieverimage = models.CharField(max_length=128, null=True, blank=False, verbose_name="Reciever Image (logo)")
   targetamount = models.DecimalField(decimal_places=2,max_digits=20,validators=[positive,nonzero],verbose_name='Target Amount')
   minimumdonation = models.DecimalField(decimal_places=2, max_digits=20,validators=[positive,nonzero],verbose_name='Minimum Donation', help_text='Enforces a minimum donation amount on the donate page.', default=decimal.Decimal('1.00'))
   usepaypalsandbox = models.BooleanField(default=False,verbose_name='Use Paypal Sandbox')
@@ -144,6 +145,9 @@ class Event(models.Model):
   prizewinneremailtemplate = models.ForeignKey(post_office.models.EmailTemplate, default=None, null=True, blank=True, verbose_name='Prize Winner Email Template', help_text="Email template to use when someone wins a prize.", related_name='event_prizewinnertemplates')
   prizewinneracceptemailtemplate = models.ForeignKey(post_office.models.EmailTemplate, default=None, null=True, blank=True, verbose_name='Prize Accepted Email Template', help_text="Email template to use when someone accepts a prize (and thus it needs to be shipped).", related_name='event_prizewinneraccepttemplates')
   prizeshippedemailtemplate = models.ForeignKey(post_office.models.EmailTemplate, default=None, null=True, blank=True, verbose_name='Prize Shipped Email Template', help_text="Email template to use when the aprize has been shipped to its recipient).", related_name='event_prizeshippedtemplates')
+  paypalreturntext = models.TextField(null=True, blank=True, verbose_name='PayPal Return Text')
+  
+
 
   def __unicode__(self):
     return self.name

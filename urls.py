@@ -23,7 +23,7 @@ urlpatterns = [
     url(r'^(?P<event>\d+|)$', public.index),
 
     url(r'^donate/(?P<event>\w+)$', donateviews.donate, name='donate'),
-    url(r'^paypal_return/$', donateviews.paypal_return, name='paypal_return'),
+    url(r'^paypal_return/(?P<event>\w+|)$', donateviews.paypal_return, name='paypal_return'),
     url(r'^paypal_cancel/$', donateviews.paypal_cancel, name='paypal_cancel'),
     url(r'^ipn/$', donateviews.ipn, name='ipn'),
 

@@ -35,8 +35,16 @@ def paypal_cancel(request):
   return views_common.tracker_response(request, "tracker/paypal_cancel.html")
 
 @csrf_exempt
-def paypal_return(request):
-  return views_common.tracker_response(request, "tracker/paypal_return.html")
+def paypal_return(request, event):
+  events = models.Event.objects.filter(short=event)
+  if events.count() > 0:
+    event = events[0]
+  else:
+    event = None
+
+  if not event or event.locked or event.paypalreturntext == None:
+    return views_common.tracker_response(request, "tracker/paypal_return_generic.html")
+  return views_common.tracker_response(request, "tracker/paypal_return.html", {'event': event })
 
 @csrf_exempt
 @cache_page(300)
@@ -92,7 +100,7 @@ def donate(request, event):
           "business": donation.event.paypalemail,
           "item_name": donation.event.receivername,
           "notify_url": serverURL + reverse('tracker:ipn'),
-          "return_url": serverURL + reverse('tracker:paypal_return'),
+          "return_url": serverURL + reverse('tracker:paypal_return', kwargs={'event': event.short}),
           "cancel_return": serverURL + reverse('tracker:paypal_cancel'),
           "custom": str(donation.id) + ":" + donation.domainId,
           "currency_code": donation.event.paypalcurrency,
