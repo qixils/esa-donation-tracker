@@ -338,6 +338,12 @@
                 });
             });
 
+            $("#id_twitchusername").each(function (i, obj) {
+                const url = new URL(window.location)
+                const name = url.searchParams.get("twitchusername")
+                $(obj).val(name);
+            })
+
             bidsAmountUpdate();
             prizeAmountUpdate();
         });
