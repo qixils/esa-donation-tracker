@@ -25,6 +25,10 @@ def admin_url(obj):
 def get_request_server_url(request):
     if request:
         serverName = request.META['HTTP_HOST']
+
+        if 'HTTP_X_FORWARDED_HOST' in request.META:
+          serverName = request.META['HTTP_X_FORWARDED_HOST']
+          
         protocol = "https://" if request.is_secure() else "http://"
         return protocol + serverName
     else:
