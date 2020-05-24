@@ -64,6 +64,8 @@ def get_columns(schedule):
          columns["Player(s)"] = columns["Runner(s)"]
     if not "Player(s)" in columns and "Runner" in columns:
          columns["Player(s)"] = columns["Runner"]
+    if not "Player(s)" in columns and "Runners" in columns:
+        columns["Player(s)"] = columns["Runners"]
 
     return columns
             
@@ -168,5 +170,19 @@ def parse_duration(duration):
 def get_setup_time(previous, base_setup_time=600000):
     setup_time = base_setup_time
     if previous != None and 'options' in previous and previous['options'] != None and 'setup' in previous['options']:
-        setup_time = parse_duration(previous['options']['setup']).seconds * 1000
+        setup_time = parse_time(previous['options']['setup']).seconds * 1000
     return setup_time
+
+
+time_regex = re.compile(r'((?P<hours>\d+?)h)?((?P<minutes>\d+?)m)?((?P<seconds>\d+?)s)?')
+
+def parse_time(time_str):
+    parts = time_regex.match(time_str)
+    if not parts:
+        return
+    parts = parts.groupdict()
+    time_params = {}
+    for (name, param) in parts.iteritems():
+        if param:
+           time_params[name] = int(param)
+    return timedelta(**time_params)
