@@ -99,3 +99,13 @@ a {
 input, textarea {
   color: $black;
 }
+
+.active_events_list {
+  display: flex;
+  justify-content: center;
+
+  .event_block {
+    flex-basis: 100%;
+    margin: 0.5rem;
+  }
+}
