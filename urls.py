@@ -53,7 +53,7 @@ urlpatterns = [
     url(r'^user/login/$', auth.login, name='login'),
     url(r'^user/logout/$', auth.logout, name='logout'),
     
-    url(r'^user/password_reset/done/$', auth_views.password_reset_done, name='password-reset-done'),
+    url(r'^user/password_reset/done/$', auth_views.password_reset_done, name='password_reset_done'),
     url(r'^user/password_reset/complete/$', auth_views.password_reset_complete, {}, name='password_reset_complete'),
     url(r'^user/password_reset/confirm/(?P<uidb64>[0-9A-Za-z]+)-(?P<token>.+)/$', 
         auth_views.password_reset_confirm, 
@@ -65,9 +65,9 @@ urlpatterns = [
         auth_views.password_reset, 
         {
             'email_template_name': 'tracker/password_reset_email.html', 
-            'post_reset_redirect': 'tracker:password-reset-done',
+            'post_reset_redirect': 'tracker:password_reset_done',
         }, 
-        name='password-reset'),
+        name='password_reset'),
 
     url(r'^user/password_change_done/$', auth_views.password_change_done, name='password_change_done'),
     url(r'^user/password_change/$', auth_views.password_change, {'post_change_redirect': 'tracker:password_change_done'}, name='password_change'),
