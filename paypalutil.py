@@ -32,8 +32,8 @@ def create_ipn(request):
       donation = get_ipn_donation(ipnObj)
       if not donation:
         raise Exception('No donation associated with this IPN: Custom field value {!r}'.format(ipnObj.custom))
-      ipnObj.verify(None, donation.event.paypalemail)
       ipnObj.verify()
+      verify_ipn_recipient_email(ipnObj, donation.event.paypalemail)
 
       # Check if receiver email matches event here.  This removes the need for a custom fork of django-paypal.
       business = donation.event.paypalemail
@@ -42,6 +42,25 @@ def create_ipn(request):
         ipnObj.set_flag("Business email mismatch. (%s)" % ipnObj.business)
   ipnObj.save()
   return ipnObj
+
+def verify_ipn_recipient_email(ipn, email):
+    """
+    Raises SpoofedIPNException if the recipient in the IPN doesn't match
+    the provided email.
+    In IPNs, business is set the same as receiver_email if the payment
+    was sent to the primary email of an account. If not, business is
+    set to the account email in the transaction and receiver_email
+    remains the primary email of an account.
+    That is, for a payment to an account, business may change from
+    transaction to transaction, but receiver_email stays the same as
+    long as the recipient doesn't change their primary email.
+    https://developer.paypal.com/docs/classic/ipn/integration-guide/IPNandPDTVariables/#mass-pay-variables
+    """
+    recipient_email = ipn.business if ipn.business else ipn.receiver_email
+    if recipient_email.lower() != email.lower():
+        raise SpoofedIPNException(
+            "IPN receiver %s doesn't match %s".format(recipient_email, email)
+        )
 
 def get_ipn(request):
   ipnObj = PayPalIPN()

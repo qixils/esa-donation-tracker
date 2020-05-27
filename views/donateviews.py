@@ -13,6 +13,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.cache import never_cache, cache_page
 from django.core import serializers
 from django.core.urlresolvers import reverse
+from django.conf import settings
 
 import post_office.mail
 
@@ -94,19 +95,21 @@ def donate(request, event):
           donation.save()
 
         serverURL = viewutil.get_request_server_url(request)
+        paypalURL = settings.PAYPAL_DOMAIN.rstrip('/')
 
         paypal_dict = {
           "amount": str(donation.amount),
           "cmd": "_donations",
           "business": donation.event.paypalemail,
           "item_name": donation.event.receivername,
-          "notify_url": serverURL + reverse('tracker:ipn'),
+          "notify_url": paypalURL + reverse('tracker:ipn'),
           "return_url": serverURL + reverse('tracker:paypal_return', kwargs={'event': event.short}),
           "cancel_return": serverURL + reverse('tracker:paypal_cancel'),
           "custom": str(donation.id) + ":" + donation.domainId,
           "currency_code": donation.event.paypalcurrency,
           "no_shipping": 0,
         }
+
         # Create the form instance
         form = forms.PayPalDonationsForm(button_type="donate", sandbox=donation.event.usepaypalsandbox, initial=paypal_dict)
         context = {"event": donation.event, "form": form }
