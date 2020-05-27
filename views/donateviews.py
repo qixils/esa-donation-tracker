@@ -69,7 +69,8 @@ def donate(request, event):
           donation.requestedalias = commentform.cleaned_data['requestedalias']
           donation.requestedemail = commentform.cleaned_data['requestedemail']
           donation.requestedsolicitemail = commentform.cleaned_data['requestedsolicitemail']
-          donation.twitchusername = commentform.cleaned_data['twitchusername']
+          if 'twitchusername' in commentform.cleaned_data and commentform.cleaned_data['twitchusername']:
+            donation.twitchusername = commentform.cleaned_data['twitchusername']
           donation.currency = event.paypalcurrency
           donation.save()
           for bidform in bidsform:

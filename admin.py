@@ -364,7 +364,7 @@ class DonationAdmin(CustomModelAdmin):
   list_editable = ('transactionstate', 'bidstate', 'readstate', 'commentstate')
   search_fields_base = ('donor__alias', 'amount', 'comment', 'modcomment')
   list_filter = ('event', 'transactionstate', 'readstate', 'commentstate', 'bidstate', 'commentlanguage', DonationListFilter)
-  readonly_fields = ['domainId']
+  readonly_fields = ['domainId', 'twitchusername']
   inlines = (DonationBidInline,PrizeTicketInline)
   fieldsets = [
     (None, {'fields': ('donor', 'event', 'timereceived')}),
