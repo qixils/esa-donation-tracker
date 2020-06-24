@@ -653,6 +653,10 @@ class EventAdmin(CustomModelAdmin):
       'classes': ['collapse'],
       'fields': []
     }),
+    ('Crowd Control', {
+      'classes': ['collapse',],
+      'fields': ['use_crowdcontrol']
+    })
   ]
 
 class PostbackURLForm(djforms.ModelForm):

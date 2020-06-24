@@ -146,7 +146,7 @@ class Event(models.Model):
   prizewinneracceptemailtemplate = models.ForeignKey(post_office.models.EmailTemplate, default=None, null=True, blank=True, verbose_name='Prize Accepted Email Template', help_text="Email template to use when someone accepts a prize (and thus it needs to be shipped).", related_name='event_prizewinneraccepttemplates')
   prizeshippedemailtemplate = models.ForeignKey(post_office.models.EmailTemplate, default=None, null=True, blank=True, verbose_name='Prize Shipped Email Template', help_text="Email template to use when the aprize has been shipped to its recipient).", related_name='event_prizeshippedtemplates')
   paypalreturntext = models.TextField(null=True, blank=True, verbose_name='PayPal Return Text')
-  
+  use_crowdcontrol = models.BooleanField(default=False, null=False, blank=False, verbose_name='Use CrowdControl integration')
 
 
   def __unicode__(self):

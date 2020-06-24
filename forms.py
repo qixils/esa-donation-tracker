@@ -113,9 +113,10 @@ class DonationEntryForm(forms.Form):
             minDonationAmount), widget=tracker.widgets.NumberInput(attrs={'id': 'iDonationAmount', 'min': str(minDonationAmount), 'step': '0.01'}), required=True)
         self.fields['comment'] = forms.CharField(
             widget=forms.Textarea, required=False)
-        self.fields['twitchusername'] = forms.CharField(
-            max_length=64, label='Twitch Username (for CrowdControl coins)', required=False
-        )
+        if event != None and event.use_crowdcontrol:
+            self.fields['twitchusername'] = forms.CharField(
+                max_length=64, label='Twitch Username (for CrowdControl coins)', required=False
+            )
         self.fields['requestedvisibility'] = forms.ChoiceField(
             initial='ALIAS', choices=models.Donation._meta.get_field('requestedvisibility').choices, label='Name Visibility')
         self.fields['requestedalias'] = forms.CharField(

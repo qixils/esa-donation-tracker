@@ -398,20 +398,21 @@
                 language or hurtful remarks, all donation comments are screened and will
                 be removed from the website if deemed unacceptable.
             </p>
-            <p></p>
+           {% if event.use_crowdcontrol %}
             <p>
                 Donations made during Crowd Control runs will award CrowdControl coins at a rate of 100 coins per dollar donated. 
                 Please ensure that you type the target username correctly. 
                 Donations made with an incorrect username or outside of Crowd Control runs will not award coins and can not be corrected afterwards. 
                 These coins expire after the event concludes.
             </p>
+            {% endif %}
             <span style="color:red">
-    {{ commentform.non_field_errors }}
-    </span>
+                {{ commentform.non_field_errors }}
+            </span>
             {% for field in commentform.visible_fields %}
                 <span style="color:red">
-        {{ field.errors }}
-	</span>
+                    {{ field.errors }}
+                </span>
                 <br/>
                 {{ field.label_tag }}
                 <br/>
@@ -450,8 +451,8 @@
                                 {{ hidden }}
                             {% endfor %}
                             <span style="color:red">
-        {{ form.non_field_errors }}
-        </span>
+                                {{ form.non_field_errors }}
+                            </span>
                             {% for field in form.visible_fields %}
                                 <div{% if field.name == 'customoptionname' %} class="mf_newoption"{% endif %}>
             <span style="color:red">
