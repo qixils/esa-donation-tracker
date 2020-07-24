@@ -272,14 +272,14 @@ user_index_url -- the user index url (i.e. /user/index)
     {% endif %}
 
     {% if accepted_prizes %}
-    On behalf of the entire GamesDoneQuick staff, thank you for your generosity in support of our event.
+    On behalf of the entire marathon staff, thank you for your generosity in support of our event.
     {% endif %}
     
     <p> 
     If you have any questions, please contact me at {{ reply_address }}. 
     </p>
 
-    - The GamesDoneQuick staff
+    - The marathon staff
 """)
 
 
@@ -366,7 +366,7 @@ reply_address -- the address to reply to (will be overridden if the event has a 
     If you have any questions, please contact me at {{ reply_address }}.
     </p>
     
-    - The GamesDoneQuick Staff
+    - The marathon Staff
 """)
 
 
@@ -439,7 +439,7 @@ reply_address -- the address to reply to (will be overridden if the event has a 
     If you have any questions, please contact me at {{ reply_address }}.
     </p>
     
-    - The GamesDoneQuick Staff
+    - The marathon Staff
 """)
 
 
