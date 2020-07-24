@@ -53,6 +53,8 @@ h1,h2,h3,h4,h5,h6 {
 }
 
 .table {
+
+
   thead > tr > th {
     border-bottom: 2px solid $purple;
   }
@@ -63,6 +65,10 @@ h1,h2,h3,h4,h5,h6 {
     a {
       color: $orange;
     }
+
+    thead {
+      background: $purple-dark;
+    }
 	}
 
   hr {
@@ -71,6 +77,11 @@ h1,h2,h3,h4,h5,h6 {
 
   td {
     border-top: 2px solid $background !important;  
+  }
+
+  button.btn-info {
+    background-color: $orange-dark;
+    margin-left: 1.5rem; 
   }
 
 }

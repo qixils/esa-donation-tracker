@@ -8,6 +8,7 @@
         </a>
         {% if bid.children %}
             <button id="bidOptionShow-{{ bid.id }}"
+                    class="btn btn-info"
                     onclick="
                             $('#bidOptionShow-{{ bid.id }}').hide();
                             $('#bidOptionHide-{{ bid.id }}').show();
@@ -16,6 +17,7 @@
                 Show Options
             </button>
             <button style="display:none" id="bidOptionHide-{{ bid.id }}"
+                    class="btn btn-info"
                     onclick="
                             $('#bidOptionShow-{{ bid.id }}').show();
                             $('#bidOptionHide-{{ bid.id }}').hide();
