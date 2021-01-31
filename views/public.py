@@ -51,7 +51,7 @@ def index(request,event=None):
     'donors' : filters.run_model_query('donorcache', eventParams).values('donor').distinct().count(),
   }
 
-  active_events = Event.objects.filter(locked=False)
+  active_events = Event.objects.filter(show_on_start=True)
 
   if 'json' in request.GET:
     return HttpResponse(json.dumps({'count':count,'agg':agg},ensure_ascii=False, cls=serializers.json.DjangoJSONEncoder),content_type='application/json;charset=utf-8')

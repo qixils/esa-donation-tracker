@@ -633,8 +633,8 @@ class EventAdmin(CustomModelAdmin):
   form = EventForm
   search_fields = ('short', 'name')
   inlines = [EventBidInline]
-  list_display = ['name', 'horaro_name', 'locked']
-  list_editable = ['locked']
+  list_display = ['name', 'horaro_name', 'locked', 'show_on_start']
+  list_editable = ['locked', 'show_on_start']
   readonly_fields = ['scheduleid']
   fieldsets = [
     (None, { 'fields': ['short', 'name', 'horaro_name', 'receivername', 'recieverimage', 'targetamount', 'minimumdonation', 'date', 'timezone', 'locked', 'show_on_start'] }),
