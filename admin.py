@@ -28,6 +28,7 @@ import tracker.models
 import tracker.prizemail as prizemail
 import tracker.filters as filters
 import tracker.logutil as logutil
+import tracker.horaro as horaro
 
 def admin_auth(perm=None, redirect_field_name=REDIRECT_FIELD_NAME, login_url='admin:login'):
   def impl_dec(viewFunc):
@@ -632,11 +633,11 @@ class EventAdmin(CustomModelAdmin):
   form = EventForm
   search_fields = ('short', 'name')
   inlines = [EventBidInline]
-  list_display = ['name', 'locked']
+  list_display = ['name', 'horaro_name', 'locked']
   list_editable = ['locked']
   readonly_fields = ['scheduleid']
   fieldsets = [
-    (None, { 'fields': ['short', 'name', 'receivername', 'recieverimage', 'targetamount', 'minimumdonation', 'date', 'timezone', 'locked'] }),
+    (None, { 'fields': ['short', 'name', 'horaro_name', 'receivername', 'recieverimage', 'targetamount', 'minimumdonation', 'date', 'timezone', 'locked', 'show_on_start'] }),
     ('Paypal', {
       'classes': ['collapse'],
       'fields': ['paypalemail', 'usepaypalsandbox', 'paypalcurrency', 'paypalreturntext']
@@ -658,6 +659,20 @@ class EventAdmin(CustomModelAdmin):
       'fields': ['use_crowdcontrol']
     })
   ]
+  actions = ['event_sync_horaro_action']
+
+  def event_sync_horaro_action(self, request, queryset):
+    columns = horaro.Columns()
+    for event in queryset:
+      if event.locked and not request.user.has_perm('tracker.can_edit_locked_events'):
+        messages.warning(request, "Skipped syncronizing event %s due to not allowed to modify locked events." % event.name)
+        continue
+      if event.horaro_name == None or event.horaro_name == "":
+        messages.warning(request, "Skipped syncronizing event %s since it does not have a horaro event name set." % event.name)
+        continue
+      horaro.UpdateSchedule(event, event.horaro_name, columns)
+  event_sync_horaro_action.short_description = "Sync with Horaro schedule"
+
 
 class PostbackURLForm(djforms.ModelForm):
   event = make_ajax_field(tracker.models.PostbackURL, 'event', 'event', initial=latest_event_id)
