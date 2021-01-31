@@ -855,8 +855,27 @@ class SpeedRunAdmin(CustomModelAdmin):
   list_filter = ['event', RunListFilter]
   inlines = [BidInline,PrizeInline]
   list_display = ('name', 'category', 'description', 'deprecated_runners', 'starttime', 'run_time', 'setup_time')
-  fieldsets = [(None, { 'fields': ('name', 'display_name', 'category', 'console', 'release_year', 'description', 'event', 'starttime', 'run_time', 'setup_time', 'deprecated_runners', 'runners', 'coop', 'tech_notes',) }),]
-  readonly_fields = ('deprecated_runners', 'starttime')
+  fieldsets = [
+    (None, { 
+      'fields': (
+        'name', 
+        'display_name', 
+        'category', 
+        'console', 
+        'release_year', 
+        'description', 
+        'event', 
+        'starttime', 
+        'run_time', 
+        'setup_time', 
+        'deprecated_runners', 
+        'runners', 
+        'coop', 
+        'tech_notes',
+        'external_id') 
+    }),
+      ]
+  readonly_fields = ('deprecated_runners', 'starttime', 'external_id')
   actions = ['start_run', 'unschedule']
 
   def start_run(self, request, runs):

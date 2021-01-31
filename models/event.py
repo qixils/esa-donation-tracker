@@ -136,6 +136,9 @@ class Event(models.Model):
   date = models.DateTimeField()
   timezone = TimeZoneField(default='US/Eastern')
   locked = models.BooleanField(default=False,help_text='Requires special permission to edit this event or anything associated with it')
+  show_on_start = models.BooleanField(default=False, verbose_name='Show on start page', help_text='Advertise the event on the start page')
+  paypalreturntext = models.TextField(null=True, blank=True, verbose_name='PayPal Return Text')
+  use_crowdcontrol = models.BooleanField(default=False, null=False, blank=False, verbose_name='Use CrowdControl integration')
   # Fields related to prize management
   prizecoordinator = models.ForeignKey(User, default=None, null=True, blank=True, verbose_name='Prize Coordinator', help_text='The person responsible for managing prize acceptance/distribution')
   allowed_prize_countries = models.ManyToManyField('Country', blank=True, verbose_name="Allowed Prize Countries", help_text="List of countries whose residents are allowed to receive prizes (leave blank to allow all countries)")
@@ -145,9 +148,8 @@ class Event(models.Model):
   prizewinneremailtemplate = models.ForeignKey(post_office.models.EmailTemplate, default=None, null=True, blank=True, verbose_name='Prize Winner Email Template', help_text="Email template to use when someone wins a prize.", related_name='event_prizewinnertemplates')
   prizewinneracceptemailtemplate = models.ForeignKey(post_office.models.EmailTemplate, default=None, null=True, blank=True, verbose_name='Prize Accepted Email Template', help_text="Email template to use when someone accepts a prize (and thus it needs to be shipped).", related_name='event_prizewinneraccepttemplates')
   prizeshippedemailtemplate = models.ForeignKey(post_office.models.EmailTemplate, default=None, null=True, blank=True, verbose_name='Prize Shipped Email Template', help_text="Email template to use when the aprize has been shipped to its recipient).", related_name='event_prizeshippedtemplates')
-  paypalreturntext = models.TextField(null=True, blank=True, verbose_name='PayPal Return Text')
-  use_crowdcontrol = models.BooleanField(default=False, null=False, blank=False, verbose_name='Use CrowdControl integration')
-
+  
+  
 
   def __unicode__(self):
     return self.name
@@ -210,6 +212,7 @@ class SpeedRun(models.Model):
   event = models.ForeignKey('Event', on_delete=models.PROTECT, default=LatestEvent)
   name = models.CharField(max_length=64)
   display_name = models.TextField(max_length=256, blank=True, verbose_name='Display Name', help_text='How to display this game on the stream.')
+  external_id = models.TextField(max_length=128, null=True, blank=True, verbose_name='External Id', help_text='Id used to identified run in external system.')
   deprecated_runners = models.CharField(max_length=1024, blank=True, verbose_name='*DEPRECATED* Runners', editable=False, validators=[runners_exists]) # This field is now deprecated, we should eventually set up a way to migrate the old set-up to use the donor links
   console = models.CharField(max_length=32,blank=True)
   commentators = models.CharField(max_length=1024,blank=True)
