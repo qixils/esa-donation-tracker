@@ -1,0 +1,28 @@
+{% extends "tracker/index.html" %}
+{% load donation_tags %}
+{% load staticfiles %}
+
+{% block title %}
+    {{ event.name|title }} -- Donate
+{% endblock %}
+
+{% block content %}
+
+<div class="row" style="margin-top: 3rem;">
+	<div class="row col-xs-10 col-xs-offset-1 col-sm-4 col-sm-offset-4">
+		<div class="panel panel-default">
+			<div class="panel-heading">
+				Event is locked.
+			</div>
+			<div class="panel-body">
+				Unfortunately, {{ event.name }} is locked for donations at this moment.
+                Please come back once the event starts.
+			</div>
+		</div>
+	</div>
+</div>
+
+{% include "tracker/partials/navfooter.html" %}
+{% endblock %}
+{% block credits %}{% endblock %}
+

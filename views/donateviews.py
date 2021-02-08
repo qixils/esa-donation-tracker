@@ -52,7 +52,7 @@ def paypal_return(request, event):
 def donate(request, event):
   event = viewutil.get_event(event)
   if event.locked:
-    raise Http404
+    return views_common.tracker_response(request, "tracker/donate_locked.html", {'event': event })
   bidsFormPrefix = "bidsform"
   prizeFormPrefix = "prizeForm"
   if request.method == 'POST':
