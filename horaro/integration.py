@@ -104,18 +104,23 @@ def get_run(event, columns, order, json_run, setup_time = 0):
             run.external_id = horaro_id
 
     if run != None:
-        update_run(run, horaro_id, columns, order, json_run, setup_time)
+        update_run(run, horaro_id, columns, order, json_run, setup_time, event)
         return run
 
     return None
 
-def update_run(run, horaro_id, columns, order, json_run, setup_time):
+def update_run(run, horaro_id, columns, order, json_run, setup_time, event=None):
     start_time = dateutil.parser.parse(json_run['scheduled'])
     run_duration = timedelta(seconds=json_run['length_t'])
 
     if horaro_id != None and run.external_id == None:
         #Set id if one is found and there was none previously.
         run.external_id = horaro_id
+    if (run.external_id != None):
+        run.name = speedrun_name(json_run, columns)
+        run.category = json_run['data'][columns.category.index] or "Sleep%"
+        if (event != None):
+            run.event = event
 
     run.order = order
     run.starttime = start_time
