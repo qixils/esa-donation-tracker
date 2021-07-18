@@ -166,8 +166,22 @@ def donate(request, event):
 
   dumpArray = [prize_info(o) for o in ticketPrizes.all()]
   ticketPrizesJson = json.dumps(dumpArray, ensure_ascii=False, cls=serializers.json.DjangoJSONEncoder)
+  page_settings = { 
+    'organization': settings.SITE_NAME_SHORT
+  }
 
-  return views_common.tracker_response(request, "tracker/donate.html", { 'event': event, 'bidsform': bidsform, 'prizesform': prizesform, 'commentform': commentform, 'hasBids': bids.count() > 0, 'bidsJson': bidsJson, 'hasTicketPrizes': ticketPrizes.count() > 0, 'ticketPrizesJson': ticketPrizesJson, 'prizes': prizes})
+  return views_common.tracker_response(request, "tracker/donate.html", {
+    'settings': page_settings,
+    'event': event, 
+    'bidsform': bidsform, 
+    'prizesform': prizesform, 
+    'commentform': commentform, 
+    'hasBids': bids.count() > 0, 
+    'bidsJson': bidsJson, 
+    'hasTicketPrizes': ticketPrizes.count() > 0, 
+    'ticketPrizesJson': ticketPrizesJson, 
+    'prizes': prizes
+    })
 
 @csrf_exempt
 @never_cache

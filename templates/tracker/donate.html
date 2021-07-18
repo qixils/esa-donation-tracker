@@ -393,10 +393,24 @@
 
         <div id="left">
             <h2>Your donation</h2>
-            <p>Note that donations may take several minutes to be collected! Using e-check donations
-                are not recommended, as your donation will be delayed by several days. Please refrain from offensive
-                language or hurtful remarks, all donation comments are screened and will
-                be removed from the website if deemed unacceptable.
+            <p>
+                {{ settings.organization }} pre-screens all donation messages before they are approved for display
+                or read on stream. {{ settings.organization }} will not provide any information about why a comment
+                is rejected, but here is some basic advice
+
+                <ul>
+                    <li>{{ settings.organization }} does not give any priority to reading donations for specific runsor runners.</li>
+                    <li>Keep it short and simple! It’s harder to work long messages intothe stream</li>
+                    <li>Language should be kept family-friendly</li>
+                    <li>Be positive towards the charity and the run</li>
+                    <li>Shout out any incentives you’re donating towards</li>
+                    <li>Don’t mention current affairs except directly relating to the work of the event charity</li>
+                    <li>Don’t assume to speak on {{ settings.organization }} or the runner’s stance on any issue.</li>
+                    <li>
+                        Donations by PayPal e-check take 6 working days to approve so your
+                        message will not be read. Please use instant payments instead.
+                    </li>
+                </ul>
             </p>
            {% if event.use_crowdcontrol %}
             <p>
