@@ -1,6 +1,7 @@
-import urllib, json
+import urllib
+import json
 import re
-# import dateutil.parser
+import dateutil.parser
 from datetime import datetime, timedelta
 # from itertools import izip_longest, tee
 
@@ -11,8 +12,15 @@ import tracker.models as models
 
 BASE_URL = "https://oengus.io/api/"
 
+class OengusOpener(urllib.URLopener):
+    def __init__(self):
+        self.version = 'Mozilla/5.0 (Macintosh; U; PPC Mac OS X Mach-O; sv-SE; rv:1.8b5) Gecko/20051006 Firefox/1.4.1'
+        urllib.URLopener.__init__(self)
+
+
 def UpdateSchedule(event, oengus_id, **kwargs):
     url = ScheduleUrl(oengus_id)
+    print("DEBUG: Downloading schedule from " + url)
     data = DownloadSchedule(url)
 
     #Remove any existing order to prevent duplicate orders and so we can delete all the unordered ones afterwards.
@@ -35,7 +43,9 @@ def ScheduleUrl(eventName):
     return BASE_URL + "marathons/" + eventName + "/schedule/"
 
 def DownloadSchedule(url, **kwargs):
-    return json.loads(urllib.urlopen(url).read())
+    opener = OengusOpener()
+    data = opener.open(url).read()
+    return json.loads(data)
 
 def DownloadScheduleColumns(eventName):
     data = DownloadSchedule(ScheduleUrl(eventName))
@@ -80,7 +90,7 @@ def get_run(event, order, json_run, setup_time = 0):
 
 def update_run(run, oengus_id, order, json_run, setup_time, event=None):
     #FIX THESE TWO vvvvvvvv
-#    start_time = dateutil.parser.parse(json_run['scheduled'])
+    start_time = dateutil.parser.parse(json_run['date'])
     run_duration = timedelta(seconds=parse_time(json_run['estimate']).seconds*1000)
 
     if oengus_id != None and run.external_id == None:
@@ -93,15 +103,15 @@ def update_run(run, oengus_id, order, json_run, setup_time, event=None):
             run.event = event
 
     run.order = order
-#    run.starttime = start_time
-#    run.endtime = start_time+run_duration
+    run.starttime = start_time
+    run.endtime = start_time+run_duration
 
     run.console = json_run['console']
     if run.console == None:
         print("DEBUG: No console found. Using N/A instead.")
         run.console = "N/A"
 
-    run.run_time = run_duration
+    run.run_time = run_duration.total_seconds()
     run.setup_time = setup_time
     
     run.save()
@@ -165,7 +175,7 @@ def get_setup_time(previous, base_setup_time=600000):
     return setup_time
 
 
-time_regex = re.compile(r'((?P<hours>\d+?)h)?((?P<minutes>\d+?)m)?((?P<seconds>\d+?)s)?')
+time_regex = re.compile(r'PT((?P<hours>\d+?)H)?((?P<minutes>\d+?)M)?((?P<seconds>\d+?)S)?')
 
 def parse_time(time_str):
     parts = time_regex.match(time_str)
@@ -176,4 +186,5 @@ def parse_time(time_str):
     for (name, param) in parts.iteritems():
         if param:
            time_params[name] = int(param)
+    #print("DEBUG: {0} hours {1} minutes {2} seconds parsed from {3}".format(parts["hours"], parts["minutes"], parts["seconds"], time_str))
     return timedelta(**time_params)
