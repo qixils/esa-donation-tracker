@@ -123,6 +123,7 @@ class Event(models.Model):
   short = models.CharField(max_length=64,unique=True)
   name = models.CharField(max_length=128)
   horaro_name = models.CharField(max_length=64, null=False, blank=True, default='')
+  oengus_name = models.CharField(max_length=64, null=False, blank=True, default='')
   receivername = models.CharField(max_length=128,blank=True,null=False,verbose_name='Receiver Name')
   recieverimage = models.CharField(max_length=128, null=True, blank=False, verbose_name="Reciever Image (logo)")
   targetamount = models.DecimalField(decimal_places=2,max_digits=20,validators=[positive,nonzero],verbose_name='Target Amount')

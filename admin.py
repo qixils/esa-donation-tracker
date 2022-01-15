@@ -29,6 +29,7 @@ import tracker.prizemail as prizemail
 import tracker.filters as filters
 import tracker.logutil as logutil
 import tracker.horaro as horaro
+import tracker.oengus as oengus
 
 def admin_auth(perm=None, redirect_field_name=REDIRECT_FIELD_NAME, login_url='admin:login'):
   def impl_dec(viewFunc):
@@ -659,7 +660,7 @@ class EventAdmin(CustomModelAdmin):
       'fields': ['use_crowdcontrol']
     })
   ]
-  actions = ['event_sync_horaro_action']
+  actions = ['event_sync_horaro_action', 'event_sync_oengus_action']
 
   def event_sync_horaro_action(self, request, queryset):
     columns = horaro.Columns()
@@ -672,6 +673,17 @@ class EventAdmin(CustomModelAdmin):
         continue
       horaro.UpdateSchedule(event, event.horaro_name, columns)
   event_sync_horaro_action.short_description = "Sync with Horaro schedule"
+
+  def event_sync_oengus_action(self, request, queryset):
+    for event in queryset:
+      if event.locked and not request.user.has_perm('tracker.can_edit_locked_events'):
+        messages.warning(request, "Skipped syncronizing event %s due to not allowed to modify locked events." % event.name)
+        continue
+      if event.oengus_name == None or event.oengus_name == "":
+        messages.warning(request, "Skipped syncronizing event %s since it does not have an Oengus event name set." % event.name)
+        continue
+      oengus.UpdateSchedule(event, event.oengus_name)
+  event_sync_oengus_action.short_description = "Sync with Oengus schedule"
 
 
 class PostbackURLForm(djforms.ModelForm):
