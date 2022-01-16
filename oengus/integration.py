@@ -56,7 +56,7 @@ offline_id = 1
 def get_run(event, order, json_run, setup_time = 0):
     
     oengus_id = None
-    oengus_id = json_run['id']
+    oengus_id = str(json_run['id'])
 
     name = speedrun_name(json_run)
     category = json_run['categoryName'] or "Sleep%"
