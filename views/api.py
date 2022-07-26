@@ -162,8 +162,10 @@ def search(request):
         if searchtype in defer:
             qs = qs.defer(*defer[searchtype])
         qs = qs.annotate(**viewutil.ModelAnnotations.get(searchtype,{}))
-        if qs.count() > 1000:
-            qs = qs[:1000]
+        offset = int(searchParams['offset'] or '0')
+        limit = 1000
+        if qs.count() > limit:
+            qs = qs[offset : (offset + limit)]
         jsonData = json.loads(serializers.serialize('json', qs, ensure_ascii=False))
         objs = dict(map(lambda o: (o.id,o), qs))
         for o in jsonData:
